@@ -239,3 +239,13 @@ export const notificationsQuerySchema = z.object({
 });
 export const markReadSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(100).optional() });
 export const unsubscribeQuerySchema = z.object({ sig: z.string().min(1).max(128) });
+
+/** Analytics periods an agency can look at. */
+export const CLICK_PERIODS = [7, 30, 90] as const;
+export const clickStatsQuerySchema = z.object({
+  days: z.coerce
+    .number()
+    .int()
+    .refine((d) => (CLICK_PERIODS as readonly number[]).includes(d), { message: "INVALID_PERIOD" })
+    .default(30),
+});

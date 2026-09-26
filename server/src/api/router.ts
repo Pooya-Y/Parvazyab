@@ -6,6 +6,7 @@ import searchRoutes from "./searchRoutes";
 import authRoutes from "./authRoutes";
 import accountSettingsRoutes from "./accountSettingsRoutes";
 import { alertRoutes, notificationRoutes } from "./alertRoutes";
+import outboundRoutes from "./outboundRoutes";
 import { adminRoutes, dashboardRoutes, savedFlightRoutes } from "./accountRoutes";
 
 const router = Router();
@@ -25,6 +26,7 @@ router.get("/health", async (_req, res) => {
 });
 
 router.use("/", searchRoutes);
+router.use("/", outboundRoutes);
 router.use("/auth", authRoutes);
 router.use("/account", accountSettingsRoutes);
 router.use("/alerts", alertRoutes);

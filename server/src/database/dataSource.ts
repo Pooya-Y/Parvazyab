@@ -26,6 +26,7 @@ import { ExploreIndex1790000003000 } from "./migrations/1790000003000-ExploreInd
 import { AccountSecurity1790000004000 } from "./migrations/1790000004000-AccountSecurity";
 import { PhoneSignIn1790000005000 } from "./migrations/1790000005000-PhoneSignIn";
 import { PriceAlerts1790000006000 } from "./migrations/1790000006000-PriceAlerts";
+import { ListingClicks1790000007000 } from "./migrations/1790000007000-ListingClicks";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -51,6 +52,7 @@ export const AppDataSource = new DataSource({
     AccountSecurity1790000004000,
     PhoneSignIn1790000005000,
     PriceAlerts1790000006000,
+    ListingClicks1790000007000,
   ],
   migrationsTransactionMode: "each",
 });

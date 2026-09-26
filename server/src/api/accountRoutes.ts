@@ -3,6 +3,7 @@ import { z } from "zod";
 import { accounts } from "../database/dataSource";
 import { requireRole, requireUser, sanitizeUser, sessionUser } from "../auth/auth";
 import { audit } from "../services/audit";
+import { clickStats } from "../services/clicks";
 import {
   adminStats,
   agencyStats,
@@ -19,6 +20,7 @@ import {
 } from "../services/accountService";
 import {
   becomeAgencySchema,
+  clickStatsQuerySchema,
   listingSchema,
   listingStatusSchema,
   savedFlightSnapshotSchema,
@@ -64,6 +66,12 @@ dashboardRoutes.get("/saved-flights", async (_req, res) => {
 
 dashboardRoutes.get("/stats", agencyOnly, async (_req, res) => {
   res.json(await agencyStats(sessionUser(res).id));
+});
+
+/** Outbound "buy" clicks on the agency's listings over the last 7, 30 or 90 days. */
+dashboardRoutes.get("/clicks", agencyOnly, async (req, res) => {
+  const { days } = clickStatsQuerySchema.parse(req.query);
+  res.json(await clickStats(sessionUser(res).id, days));
 });
 
 dashboardRoutes.get("/listings", agencyOnly, async (_req, res) => {

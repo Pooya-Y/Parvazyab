@@ -10,6 +10,7 @@ import { config } from "./config/env";
 import { Scheduler } from "./jobs/scheduler";
 import { snapshotRoutePrices } from "./services/priceHistory";
 import { evaluatePriceAlerts } from "./services/priceAlerts";
+import { purgeOldClicks } from "./services/clicks";
 import {
   purgeDeadAuthTokens,
   purgeOldAuditEntries,
@@ -51,7 +52,8 @@ async function main() {
       run: async () => (await purgeDeadAuthTokens()) + (await purgeOldOtpChallenges()),
       runAtStart: true,
     })
-    .add({ name: "purge-audit-log", everyMs: 24 * HOUR, run: () => purgeOldAuditEntries() });
+    .add({ name: "purge-audit-log", everyMs: 24 * HOUR, run: () => purgeOldAuditEntries() })
+    .add({ name: "purge-click-history", everyMs: 24 * HOUR, run: () => purgeOldClicks() });
   if (config.SEED_DEMO_DATA) {
     scheduler.add({ name: "demo-timetable", everyMs: 6 * HOUR, run: () => seedDemoData() });
   }
