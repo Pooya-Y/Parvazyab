@@ -1,6 +1,16 @@
 import type { ComponentType } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useSearchParams } from "react-router";
-import { BellRing, ChartColumn, Heart, Info, MailWarning, ShieldCheck, Store, UserCog } from "lucide-react";
+import {
+  BellRing,
+  ChartColumn,
+  FileSpreadsheet,
+  Heart,
+  Info,
+  MailWarning,
+  ShieldCheck,
+  Store,
+  UserCog,
+} from "lucide-react";
 import { ResendVerificationButton } from "@/components/auth/ResendVerificationButton";
 import { PageShell } from "@/components/layout/PageShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,6 +46,7 @@ function navFor(user: User): NavGroup[] {
       items: [
         { to: "/dashboard/agency", label: "پروازهای آژانس", icon: Store },
         { to: "/dashboard/insights", label: "آمار بازدید", icon: ChartColumn },
+        { to: "/dashboard/tools", label: "ورود گروهی و API", icon: FileSpreadsheet },
       ],
     });
   }

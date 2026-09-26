@@ -1,7 +1,9 @@
 import type {
   AdminStats,
   AgencyStats,
+  ApiKey,
   ClickStats,
+  ImportReport,
   Flight,
   Listing,
   ListingInput,
@@ -58,18 +60,24 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   query?: Record<string, QueryValue>;
   body?: unknown;
+  /** Send `body` (a string) as-is with this type, e.g. text/csv, instead of as JSON. */
+  contentType?: string;
   signal?: AbortSignal;
 }
 
-async function request<T>(path: string, { method = "GET", query, body, signal }: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  { method = "GET", query, body, contentType, signal }: RequestOptions = {},
+): Promise<T> {
   let res: Response;
+  const raw = contentType !== undefined && typeof body === "string";
   try {
     res = await fetch(`${BASE}${path}${toQueryString(query)}`, {
       method,
       credentials: "include",
       signal,
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: body === undefined ? undefined : { "Content-Type": raw ? contentType : "application/json" },
+      body: body === undefined ? undefined : raw ? body : JSON.stringify(body),
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
@@ -182,6 +190,19 @@ export const api = {
         body: { isActive },
       }),
     deleteListing: (id: string) => request<void>(`/dashboard/listings/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    /** Preview (default) or commit a CSV of listings. */
+    importListings: (csv: string, options: { commit?: boolean; skipInvalid?: boolean } = {}) =>
+      request<ImportReport>("/dashboard/listings/import", {
+        method: "POST",
+        query: { commit: options.commit || undefined, skipInvalid: options.skipInvalid || undefined },
+        body: csv,
+        contentType: "text/csv",
+      }),
+    apiKeys: (signal?: AbortSignal) => request<ApiKey[]>("/dashboard/api-keys", { signal }),
+    /** The response carries the key itself: the only time it is ever shown. */
+    createApiKey: (name: string) =>
+      request<ApiKey & { key: string }>("/dashboard/api-keys", { method: "POST", body: { name } }),
+    revokeApiKey: (id: string) => request<void>(`/dashboard/api-keys/${encodeURIComponent(id)}`, { method: "DELETE" }),
     clicks: (days: number, signal?: AbortSignal) =>
       request<ClickStats>("/dashboard/clicks", { query: { days }, signal }),
     becomeAgency: (agencyName: string) =>
@@ -229,6 +250,9 @@ export function offerHref(offer: { listingId: string; bookingUrl: string }, sour
   if (!safeExternalUrl(offer.bookingUrl)) return undefined;
   return `${BASE}/go/${encodeURIComponent(offer.listingId)}?src=${source}`;
 }
+
+/** Plain links (downloads) into the API: cookies ride along like any same-site navigation. */
+export const apiHref = (path: string) => `${BASE}${path}`;
 
 /** Only follow http(s) links from the API; anything else (e.g. `javascript:`) is dropped. */
 export function safeExternalUrl(url: string): string | undefined {

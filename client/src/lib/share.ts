@@ -64,3 +64,16 @@ export async function shareLink(data: ShareData, env: ShareEnv = browserEnv()): 
   }
   return env.legacyCopy?.(data.url) ? "copied" : "failed";
 }
+
+/** Copies text to the clipboard, falling back to the legacy path where the clipboard API is refused. */
+export async function copyText(text: string, env: ShareEnv = browserEnv()): Promise<boolean> {
+  if (env.writeClipboard) {
+    try {
+      await env.writeClipboard(text);
+      return true;
+    } catch {
+      // Permission denied or insecure context.
+    }
+  }
+  return env.legacyCopy?.(text) ?? false;
+}

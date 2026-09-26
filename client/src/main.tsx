@@ -27,6 +27,7 @@ const AdminOverviewPage = lazy(() => import("./pages/dashboard/AdminOverviewPage
 const AccountPage = lazy(() => import("./pages/dashboard/AccountPage.tsx"));
 const AlertsPage = lazy(() => import("./pages/dashboard/AlertsPage.tsx"));
 const AgencyInsightsPage = lazy(() => import("./pages/dashboard/AgencyInsightsPage.tsx"));
+const AgencyToolsPage = lazy(() => import("./pages/dashboard/AgencyToolsPage.tsx"));
 const AlertUnsubscribe = lazy(() => import("./pages/AlertUnsubscribe.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Explore = lazy(() => import("./pages/Explore.tsx"));
@@ -93,6 +94,14 @@ createRoot(document.getElementById("root")!).render(
                       element={
                         <RequireRole role="agency">
                           <AgencyInsightsPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="tools"
+                      element={
+                        <RequireRole role="agency">
+                          <AgencyToolsPage />
                         </RequireRole>
                       }
                     />

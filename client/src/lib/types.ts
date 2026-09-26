@@ -281,6 +281,38 @@ export interface ClickStats {
   sources: { search: number; detail: number; roundtrip: number; other: number };
 }
 
+export type ImportAction = "create" | "update" | "unchanged" | "error";
+
+export interface ImportReport {
+  committed: boolean;
+  counts: Record<ImportAction, number>;
+  rows: {
+    /** CSV line number. */
+    ref: number;
+    action: ImportAction;
+    /** "column: CODE" */
+    errors: string[];
+    id?: string;
+    flight?: {
+      originCode: string;
+      destinationCode: string;
+      airline: string;
+      flightNo: string;
+      departAt: number;
+      priceToman: number;
+    };
+  }[];
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  /** Public part: keys look like pvz_<prefix>_<secret>. */
+  prefix: string;
+  createdAt: number;
+  lastUsedAt: number | null;
+}
+
 export interface AdminStats {
   listingsTotal: number;
   listingsActive: number;
