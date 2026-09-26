@@ -1,0 +1,239 @@
+import { useState } from "react";
+import { Link } from "react-router";
+import { BadgeCheck, EyeOff, Flag, Loader2, ShieldCheck, X } from "lucide-react";
+import { toast } from "sonner";
+import { ReasonDialog, type ReasonRequest } from "@/components/admin/ReasonDialog";
+import { StarRow } from "@/components/agencies/Stars";
+import { LoadError } from "@/components/dashboard/common";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useDocumentTitle } from "@/hooks/use-document-title";
+import { api } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
+import { formatRelativeTime, toFaDigits } from "@/lib/persian";
+import type { ModerationQueue } from "@/lib/types";
+import { useApiQuery } from "@/lib/use-api-query";
+
+type Request = ModerationQueue["verificationRequests"][number];
+type Reported = ModerationQueue["reportedReviews"][number];
+
+function Empty({ children }: { children: string }) {
+  return <p className="rounded-lg border bg-card px-4 py-6 text-center text-sm text-muted-foreground">{children}</p>;
+}
+
+export default function ModerationPage() {
+  useDocumentTitle("بررسی‌ها");
+  const queue = useApiQuery("admin-moderation", (signal) => api.admin.moderation(signal), ["moderation"]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [reason, setReason] = useState<ReasonRequest | null>(null);
+  const [now] = useState(() => Date.now());
+
+  /** Runs an action, reports failure, and on success drops the item locally. */
+  const act = async (
+    key: string,
+    run: () => Promise<unknown>,
+    done: string,
+    update: (q: ModerationQueue) => ModerationQueue,
+  ) => {
+    setBusy(key);
+    try {
+      await run();
+      queue.setData((q) => (q ? update(q) : q));
+      toast.success(done);
+    } catch (err) {
+      toast.error(errorMessage(err, "انجام نشد. دوباره تلاش کنید."));
+      throw err;
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const dropRequest = (id: string) => (q: ModerationQueue) => ({
+    ...q,
+    verificationRequests: q.verificationRequests.filter((r) => r.agencyId !== id),
+  });
+  const dropReview = (id: string) => (q: ModerationQueue) => ({
+    ...q,
+    reportedReviews: q.reportedReviews.filter((r) => r.reviewId !== id),
+  });
+
+  const approve = (r: Request) =>
+    void act(
+      r.agencyId,
+      () => api.admin.verifyAgency(r.agencyId, true),
+      `«${r.name}» تأیید شد`,
+      dropRequest(r.agencyId),
+    ).catch(() => undefined);
+  const reject = (r: Request) =>
+    setReason({
+      title: `تأیید «${r.name}» رد شود؟`,
+      description: "آژانس با خبر شدن از دلیل، پروفایلش را اصلاح می‌کند و دوباره درخواست می‌دهد.",
+      confirmLabel: "رد درخواست",
+      placeholder: "مثلاً: شمارهٔ مجوز با نام آژانس نمی‌خواند.",
+      run: (note) =>
+        act(
+          r.agencyId,
+          () => api.admin.verifyAgency(r.agencyId, false, note),
+          "درخواست رد شد",
+          dropRequest(r.agencyId),
+        ),
+    });
+  const hide = (r: Reported) =>
+    void act(
+      r.reviewId,
+      () => api.admin.setReviewStatus(r.reviewId, "hidden"),
+      "نظر پنهان شد",
+      dropReview(r.reviewId),
+    ).catch(() => undefined);
+  const dismiss = (r: Reported) =>
+    void act(r.reviewId, () => api.admin.dismissReports(r.reviewId), "گزارش‌ها رد شد", dropReview(r.reviewId)).catch(
+      () => undefined,
+    );
+
+  if (queue.error && !queue.data) return <LoadError error={queue.error} onRetry={queue.refetch} />;
+  if (!queue.data) return <Skeleton className="h-64 rounded-lg" aria-hidden />;
+  const { verificationRequests, reportedReviews, counts } = queue.data;
+
+  return (
+    <>
+      <h2 className="mb-1 text-lg font-bold">بررسی‌ها</h2>
+      <p className="mb-6 text-sm leading-7 text-muted-foreground">
+        الان پنهان: {toFaDigits(counts.suspendedAccounts)} حساب،{" "}
+        <Link
+          to="/dashboard/admin/listings?status=suspended"
+          className="text-primary underline-offset-4 hover:underline"
+        >
+          {toFaDigits(counts.suspendedListings)} پرواز
+        </Link>{" "}
+        و {toFaDigits(counts.hiddenReviews)} نظر. هر تصمیم در{" "}
+        <Link to="/dashboard/admin/audit" className="text-primary underline-offset-4 hover:underline">
+          گزارش رویدادها
+        </Link>{" "}
+        ثبت می‌شود.
+      </p>
+
+      <section aria-labelledby="verification-heading">
+        <h3 id="verification-heading" className="mb-3 flex items-center gap-2 font-semibold">
+          <ShieldCheck className="size-4 text-muted-foreground" aria-hidden />
+          درخواست‌های تأیید آژانس
+          {verificationRequests.length ? (
+            <span className="rounded-[5px] bg-primary/10 px-1.5 text-xs text-primary tabular-nums">
+              {toFaDigits(verificationRequests.length)}
+            </span>
+          ) : null}
+        </h3>
+        {verificationRequests.length ? (
+          <ul className="divide-y rounded-lg border bg-card">
+            {verificationRequests.map((r) => (
+              <li key={r.agencyId} className="space-y-2 p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <Link
+                    to={`/agencies/${encodeURIComponent(r.slug)}`}
+                    className="font-semibold underline-offset-4 hover:underline"
+                  >
+                    {r.name}
+                  </Link>
+                  <span className="text-xs text-muted-foreground">{formatRelativeTime(r.requestedAt, now)}</span>
+                </div>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                  <dt className="text-muted-foreground">مجوز</dt>
+                  <dd>{r.licenseNo}</dd>
+                  {r.city ? (
+                    <>
+                      <dt className="text-muted-foreground">شهر</dt>
+                      <dd>{r.city}</dd>
+                    </>
+                  ) : null}
+                  {r.website ? (
+                    <>
+                      <dt className="text-muted-foreground">وب‌سایت</dt>
+                      <dd>
+                        <bdi dir="ltr" className="break-all">
+                          {r.website}
+                        </bdi>
+                      </dd>
+                    </>
+                  ) : null}
+                  <dt className="text-muted-foreground">پروازها</dt>
+                  <dd className="tabular-nums">{toFaDigits(r.listings)}</dd>
+                </dl>
+                <p className="text-sm leading-7 whitespace-pre-line text-muted-foreground">{r.description}</p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button size="sm" onClick={() => approve(r)} disabled={busy === r.agencyId}>
+                    {busy === r.agencyId ? (
+                      <Loader2 className="animate-spin" aria-hidden />
+                    ) : (
+                      <BadgeCheck aria-hidden />
+                    )}
+                    تأیید آژانس
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => reject(r)} disabled={busy === r.agencyId}>
+                    <X aria-hidden />
+                    رد درخواست
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Empty>درخواستی در صف نیست.</Empty>
+        )}
+      </section>
+
+      <section aria-labelledby="reports-heading" className="mt-8">
+        <h3 id="reports-heading" className="mb-3 flex items-center gap-2 font-semibold">
+          <Flag className="size-4 text-muted-foreground" aria-hidden />
+          نظرهای گزارش‌شده
+          {reportedReviews.length ? (
+            <span className="rounded-[5px] bg-primary/10 px-1.5 text-xs text-primary tabular-nums">
+              {toFaDigits(reportedReviews.length)}
+            </span>
+          ) : null}
+        </h3>
+        {reportedReviews.length ? (
+          <ul className="divide-y rounded-lg border bg-card">
+            {reportedReviews.map((r) => (
+              <li key={r.reviewId} className="space-y-2 p-4">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <StarRow value={r.rating} />
+                  <span className="font-medium">{r.author}</span>
+                  <span className="text-muted-foreground">دربارهٔ</span>
+                  {r.agencySlug ? (
+                    <Link
+                      to={`/agencies/${encodeURIComponent(r.agencySlug)}`}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {r.agencyName}
+                    </Link>
+                  ) : (
+                    <span>{r.agencyName}</span>
+                  )}
+                </div>
+                <blockquote className="border-s-2 ps-3 text-sm leading-7 whitespace-pre-line">
+                  {r.body || <span className="text-muted-foreground">(بدون متن)</span>}
+                </blockquote>
+                <p className="text-xs leading-6 text-muted-foreground">
+                  {toFaDigits(r.reports)} گزارش، آخرینش {formatRelativeTime(r.lastReportedAt, now)}
+                  {r.reasons.length ? ` · «${r.reasons.join("»، «")}»` : ""}
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button size="sm" variant="destructive" onClick={() => hide(r)} disabled={busy === r.reviewId}>
+                    {busy === r.reviewId ? <Loader2 className="animate-spin" aria-hidden /> : <EyeOff aria-hidden />}
+                    پنهان کردن نظر
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => dismiss(r)} disabled={busy === r.reviewId}>
+                    گزارش‌ها بی‌پایه است
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Empty>گزارشی باز نیست.</Empty>
+        )}
+      </section>
+
+      <ReasonDialog request={reason} onClose={() => setReason(null)} />
+    </>
+  );
+}

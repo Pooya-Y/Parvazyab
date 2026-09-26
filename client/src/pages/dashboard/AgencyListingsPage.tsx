@@ -107,7 +107,17 @@ export default function AgencyListingsPage() {
                   >
                     {l.isActive ? "فعال" : "غیرفعال"}
                   </span>
+                  {l.suspendedAt ? (
+                    <span className="rounded-md bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
+                      معلق توسط مدیر
+                    </span>
+                  ) : null}
                 </div>
+                {l.suspendedAt ? (
+                  <p className="mt-1 text-xs leading-6 text-destructive">
+                    این پرواز به مسافران نشان داده نمی‌شود{l.suspensionReason ? `: ${l.suspensionReason}` : "."}
+                  </p>
+                ) : null}
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {l.airline} · <bdi className="font-mono text-xs">{l.flightNo}</bdi> · {formatJalaliDate(l.departAt)}{" "}
                   ساعت {formatTime(l.departAt)}

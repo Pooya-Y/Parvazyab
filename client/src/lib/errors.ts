@@ -53,6 +53,12 @@ const MESSAGES: Record<string, string> = {
   INVALID_SLUG: "نشانی فقط می‌تواند حروف کوچک لاتین، رقم و خط تیره داشته باشد (مثلاً sky-travel).",
   REVIEW_NEEDS_VERIFIED_ACCOUNT: "برای ثبت نظر، اول ایمیل یا شمارهٔ موبایل حسابتان را تأیید کنید.",
   AGENCIES_CANNOT_REVIEW: "حساب‌های آژانس نمی‌توانند برای آژانس‌ها نظر ثبت کنند.",
+  ACCOUNT_SUSPENDED: "حساب شما معلق است؛ این کار تا رفع تعلیق ممکن نیست.",
+  CANNOT_SUSPEND_ADMIN: "حساب مدیران را نمی‌توان معلق کرد.",
+  CANNOT_SUSPEND_SELF: "نمی‌توانید حساب خودتان را معلق کنید.",
+  PROFILE_INCOMPLETE: "پیش از درخواست تأیید، شمارهٔ مجوز و معرفی دست‌کم ۳۰ نویسه‌ای را در پروفایل بنویسید.",
+  ALREADY_VERIFIED: "آژانس شما از قبل تأیید شده است.",
+  CANNOT_REPORT_OWN_REVIEW: "نظر خودتان را نمی‌توانید گزارش کنید.",
   INVALID_REQUEST: "اطلاعات واردشده معتبر نیست.",
 };
 

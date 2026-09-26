@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Building2, Plane, Store, Users } from "lucide-react";
+import { Ban, Building2, Plane, RotateCcw, Store, Users } from "lucide-react";
+import { ReasonDialog, type ReasonRequest } from "@/components/admin/ReasonDialog";
+import { Button } from "@/components/ui/button";
 import { LoadError, RouteLabel, StatBox } from "@/components/dashboard/common";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +25,43 @@ export default function AdminOverviewPage() {
   const stats = useApiQuery("admin-stats", (signal) => api.admin.stats(signal));
   const users = useApiQuery("admin-users", (signal) => api.admin.users(signal));
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [reason, setReason] = useState<ReasonRequest | null>(null);
+
+  const applySuspension = async (u: User, suspended: boolean, note = "") => {
+    setSavingId(u.id);
+    try {
+      await api.admin.suspendUser(u.id, suspended, note);
+      users.setData((list) =>
+        list?.map((x) =>
+          x.id === u.id
+            ? {
+                ...x,
+                suspendedAt: suspended ? new Date().toISOString() : null,
+                suspensionReason: suspended ? note || null : null,
+              }
+            : x,
+        ),
+      );
+      toast.success(suspended ? "حساب معلق شد" : "تعلیق حساب برداشته شد");
+    } catch (err) {
+      toast.error(errorMessage(err, "انجام نشد. دوباره تلاش کنید."));
+      throw err;
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const suspend = (u: User) =>
+    setReason({
+      title: `حساب «${u.agencyName || u.name}» معلق شود؟`,
+      description:
+        u.accountRole === "agency"
+          ? "همهٔ پروازهای این آژانس از نتایج پنهان می‌شود و انتشار، ورود گروهی و API برایش بسته می‌شود."
+          : "این کاربر تا رفع تعلیق نمی‌تواند نظر ثبت کند یا هشدار قیمت بسازد.",
+      confirmLabel: "تعلیق حساب",
+      placeholder: "مثلاً: انتشار پروازهای ساختگی.",
+      run: (note) => applySuspension(u, true, note),
+    });
 
   const changeRole = async (u: User, role: "user" | "agency") => {
     setSavingId(u.id);
@@ -105,6 +144,9 @@ export default function AdminOverviewPage() {
                 <th scope="col" className="p-3 text-start font-medium">
                   نقش
                 </th>
+                <th scope="col" className="p-3 text-start font-medium">
+                  وضعیت
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -137,6 +179,41 @@ export default function AdminOverviewPage() {
                         </Select>
                       )}
                     </td>
+                    <td className="p-3">
+                      {locked ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : u.suspendedAt ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className="rounded-[5px] bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive"
+                            title={u.suspensionReason ?? undefined}
+                          >
+                            معلق
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void applySuspension(u, false).catch(() => undefined)}
+                            disabled={savingId === u.id}
+                          >
+                            <RotateCcw aria-hidden />
+                            رفع تعلیق
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => suspend(u)}
+                          disabled={savingId === u.id}
+                          aria-label={`تعلیق حساب ${u.agencyName || u.name}`}
+                        >
+                          <Ban aria-hidden />
+                          تعلیق
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -144,6 +221,7 @@ export default function AdminOverviewPage() {
           </table>
         </div>
       </section>
+      <ReasonDialog request={reason} onClose={() => setReason(null)} />
     </div>
   );
 }

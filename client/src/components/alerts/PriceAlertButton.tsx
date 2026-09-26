@@ -253,7 +253,8 @@ export function PriceAlertButton({ compact = false, ...target }: AlertTarget & {
             <DialogTitle>هشدار قیمت {route}</DialogTitle>
             <DialogDescription>وقتی قیمت پایین بیاید، در پروازیاب خبرتان می‌کنیم.</DialogDescription>
           </DialogHeader>
-          {open ? <PriceAlertForm target={target} onDone={() => setOpen(false)} /> : null}
+          {/* The content unmounts when the dialog closes, so every opening starts with a fresh form. */}
+          <PriceAlertForm target={target} onDone={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
     </>

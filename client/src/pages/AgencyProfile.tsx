@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import { ChevronRight, ExternalLink, Loader2, Phone, SearchX, Trash2 } from "lucide-react";
+import { ChevronRight, ExternalLink, Flag, Loader2, Phone, SearchX, Trash2 } from "lucide-react";
+import { ReasonDialog, type ReasonRequest } from "@/components/admin/ReasonDialog";
 import { toast } from "sonner";
 import { RatingChip, VerifiedMark } from "@/components/agencies/AgencyBits";
 import { StarInput, StarRow } from "@/components/agencies/Stars";
@@ -66,7 +67,7 @@ function RatingSummary({ rating }: { rating: AgencyProfile["rating"] }) {
   );
 }
 
-function ReviewItem({ review }: { review: AgencyReview }) {
+function ReviewItem({ review, onReport }: { review: AgencyReview; onReport?: (review: AgencyReview) => void }) {
   return (
     <li className="py-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -77,6 +78,16 @@ function ReviewItem({ review }: { review: AgencyReview }) {
           {review.edited ? " · ویرایش‌شده" : ""}
         </span>
         {review.mine ? <span className="rounded-[5px] bg-muted px-1.5 py-0.5 text-xs">نظر شما</span> : null}
+        {onReport && !review.mine ? (
+          <button
+            type="button"
+            className="ms-auto inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            onClick={() => onReport(review)}
+          >
+            <Flag className="size-3" aria-hidden />
+            گزارش
+          </button>
+        ) : null}
       </div>
       {review.body ? <p className="mt-2 text-sm leading-7 whitespace-pre-line">{review.body}</p> : null}
       {review.reply ? (
@@ -207,6 +218,26 @@ function MyReview({ slug, mine, onSaved }: { slug: string; mine: AgencyReview | 
 
 function Reviews({ slug }: { slug: string }) {
   const { user } = useAuth();
+  const [reporting, setReporting] = useState<ReasonRequest | null>(null);
+  const canReport = user !== null && !isGuest(user);
+  const report = (review: AgencyReview) =>
+    setReporting({
+      title: "گزارش این نظر",
+      description: "مدیر پروازیاب نظر را بررسی می‌کند و اگر توهین‌آمیز، تبلیغاتی یا نادرست باشد پنهانش می‌کند.",
+      confirmLabel: "ثبت گزارش",
+      placeholder: "چه مشکلی دارد؟ مثلاً توهین، تبلیغ یا اطلاعات نادرست.",
+      fieldLabel: "دلیل گزارش (اختیاری)",
+      tone: "default",
+      run: async (reason) => {
+        try {
+          await api.agencies.reportReview(slug, review.id, reason);
+          toast.success("گزارش شما ثبت شد");
+        } catch (err) {
+          toast.error(errorMessage(err, "گزارش ثبت نشد."));
+          throw err;
+        }
+      },
+    });
   const [version, setVersion] = useState(0);
   const first = useApiQuery(`agency-reviews:${slug}:${user?.id ?? "anon"}:${version}`, (signal) =>
     api.agencies.reviews(slug, { limit: PAGE }, signal),
@@ -252,7 +283,7 @@ function Reviews({ slug }: { slug: string }) {
         <>
           <ul className="mt-2 divide-y">
             {items.map((r) => (
-              <ReviewItem key={r.id} review={r} />
+              <ReviewItem key={r.id} review={r} onReport={canReport ? report : undefined} />
             ))}
           </ul>
           {!done && (first.data?.items.length ?? 0) >= PAGE ? (
@@ -265,6 +296,7 @@ function Reviews({ slug }: { slug: string }) {
       ) : (
         <p className="mt-4 text-sm text-muted-foreground">هنوز نظری ثبت نشده است؛ اولین نفر باشید.</p>
       )}
+      <ReasonDialog request={reporting} onClose={() => setReporting(null)} />
     </section>
   );
 }

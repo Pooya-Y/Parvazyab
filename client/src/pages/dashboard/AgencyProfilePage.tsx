@@ -31,6 +31,41 @@ function Field({ label, hint, children, id }: { label: string; hint?: ReactNode;
   );
 }
 
+/** Asking for the verified badge: needs a license number and a description of 30+ characters (checked by the server). */
+function VerificationRequest({ pending }: { pending: boolean }) {
+  const [requested, setRequested] = useState(pending);
+  const [busy, setBusy] = useState(false);
+
+  const ask = async () => {
+    setBusy(true);
+    try {
+      await api.dashboard.requestVerification();
+      setRequested(true);
+      toast.success("درخواست تأیید ثبت شد");
+    } catch (err) {
+      toast.error(errorMessage(err, "درخواست ثبت نشد."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md bg-muted/50 px-3 py-2.5 text-xs leading-6 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-muted-foreground">
+        {requested
+          ? "درخواست تأیید شما در صف بررسی است؛ نتیجه را در اعلان‌ها می‌بینید."
+          : "نشان «تأییدشده» را مدیر پروازیاب پس از بررسی مجوز می‌دهد. شمارهٔ مجوز و معرفی آژانس را کامل و ذخیره کنید، بعد درخواست دهید."}
+      </p>
+      {requested ? null : (
+        <Button type="button" size="sm" variant="outline" onClick={() => void ask()} disabled={busy}>
+          {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
+          درخواست نشان تأیید
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function ProfileForm({ initial }: { initial: OwnAgencyProfile }) {
   const [form, setForm] = useState({
     slug: initial.slug,
@@ -93,11 +128,7 @@ function ProfileForm({ initial }: { initial: OwnAgencyProfile }) {
           </Link>
         </Button>
       </div>
-      {saved.verified ? null : (
-        <p className="rounded-md bg-muted/50 px-3 py-2 text-xs leading-6 text-muted-foreground">
-          نشان «تأییدشده» را مدیر پروازیاب پس از بررسی مدارک آژانس می‌دهد.
-        </p>
-      )}
+      {saved.verified ? null : <VerificationRequest pending={saved.verificationPending} />}
 
       <Field
         id={`${id}-slug`}
@@ -303,8 +334,8 @@ export default function AgencyProfilePage() {
           نظر مسافران
         </h2>
         <p className="text-sm leading-7 text-muted-foreground">
-          به هر نظر یک پاسخ عمومی می‌توانید بدهید. نظرها را نمی‌توانید حذف کنید؛ اگر نظری نامناسب است، به پشتیبانی
-          پروازیاب خبر دهید.
+          به هر نظر یک پاسخ عمومی می‌توانید بدهید. نظرها را نمی‌توانید حذف کنید؛ اگر نظری نامناسب است، از صفحهٔ عمومی
+          آژانس گزارشش کنید تا مدیر بررسی کند.
         </p>
         {reviews.error && !reviews.data ? (
           <LoadError error={reviews.error} onRetry={reviews.refetch} />

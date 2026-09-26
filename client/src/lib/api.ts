@@ -1,5 +1,7 @@
 import type {
+  AdminListing,
   AdminStats,
+  AuditEntry,
   AgencyProfile,
   AgencyReview,
   AgencyStats,
@@ -10,6 +12,7 @@ import type {
   Flight,
   Listing,
   ListingInput,
+  ModerationQueue,
   OwnAgencyProfile,
   PriceCalendar,
   PriceHistory,
@@ -204,9 +207,10 @@ export const api = {
       }),
     apiKeys: (signal?: AbortSignal) => request<ApiKey[]>("/dashboard/api-keys", { signal }),
     profile: (signal?: AbortSignal) => request<OwnAgencyProfile>("/dashboard/profile", { signal }),
-    updateProfile: (input: Omit<OwnAgencyProfile, "name" | "verified">) =>
+    updateProfile: (input: Omit<OwnAgencyProfile, "name" | "verified" | "verificationPending">) =>
       request<OwnAgencyProfile>("/dashboard/profile", { method: "PUT", body: input }),
     reviews: (signal?: AbortSignal) => request<AgencyReview[]>("/dashboard/reviews", { signal }),
+    requestVerification: () => request<{ ok: true }>("/dashboard/profile/verification", { method: "POST" }),
     replyToReview: (id: string, reply: string) =>
       request<{ ok: true }>(`/dashboard/reviews/${encodeURIComponent(id)}/reply`, { method: "PUT", body: { reply } }),
     /** The response carries the key itself: the only time it is ever shown. */
@@ -231,6 +235,11 @@ export const api = {
     /** Writing again edits the one review a traveller has of an agency. */
     saveReview: (slug: string, input: { rating: number; body: string }) =>
       request<AgencyReview>(`/agencies/${encodeURIComponent(slug)}/reviews/mine`, { method: "PUT", body: input }),
+    reportReview: (slug: string, reviewId: string, reason: string) =>
+      request<{ ok: true }>(`/agencies/${encodeURIComponent(slug)}/reviews/${encodeURIComponent(reviewId)}/report`, {
+        method: "POST",
+        body: { reason },
+      }),
     deleteReview: (slug: string) =>
       request<void>(`/agencies/${encodeURIComponent(slug)}/reviews/mine`, { method: "DELETE" }),
   },
@@ -255,6 +264,30 @@ export const api = {
   },
 
   admin: {
+    moderation: (signal?: AbortSignal) => request<ModerationQueue>("/admin/moderation", { signal }),
+    suspendUser: (id: string, suspended: boolean, reason?: string) =>
+      request<{ ok: true }>(`/admin/users/${encodeURIComponent(id)}/suspension`, {
+        method: "PUT",
+        body: { suspended, reason: reason ?? "" },
+      }),
+    listings: (q: string, status: "all" | "suspended", signal?: AbortSignal) =>
+      request<AdminListing[]>("/admin/listings", { query: { q, status }, signal }),
+    suspendListing: (id: string, suspended: boolean, reason?: string) =>
+      request<{ ok: true }>(`/admin/listings/${encodeURIComponent(id)}/suspension`, {
+        method: "PUT",
+        body: { suspended, reason: reason ?? "" },
+      }),
+    verifyAgency: (agencyId: string, verified: boolean, note?: string) =>
+      request<{ ok: true }>(`/admin/agencies/${encodeURIComponent(agencyId)}/verification`, {
+        method: "PUT",
+        body: { verified, note: note ?? "" },
+      }),
+    setReviewStatus: (id: string, status: "published" | "hidden") =>
+      request<{ ok: true }>(`/admin/reviews/${encodeURIComponent(id)}/status`, { method: "PUT", body: { status } }),
+    dismissReports: (id: string) =>
+      request<{ ok: true }>(`/admin/reviews/${encodeURIComponent(id)}/dismiss-reports`, { method: "POST" }),
+    audit: (options: { action?: string; before?: number; limit?: number } = {}, signal?: AbortSignal) =>
+      request<AuditEntry[]>("/admin/audit", { query: { ...options }, signal }),
     stats: (signal?: AbortSignal) => request<AdminStats>("/admin/stats", { signal }),
     users: (signal?: AbortSignal) => request<User[]>("/admin/users", { signal }),
     setRole: (userId: string, accountRole: "user" | "agency") =>

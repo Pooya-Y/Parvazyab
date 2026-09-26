@@ -34,6 +34,9 @@ const Explore = lazy(() => import("./pages/Explore.tsx"));
 const Agencies = lazy(() => import("./pages/Agencies.tsx"));
 const AgencyProfile = lazy(() => import("./pages/AgencyProfile.tsx"));
 const AgencyProfilePage = lazy(() => import("./pages/dashboard/AgencyProfilePage.tsx"));
+const ModerationPage = lazy(() => import("./pages/dashboard/ModerationPage.tsx"));
+const AdminListingsPage = lazy(() => import("./pages/dashboard/AdminListingsPage.tsx"));
+const AuditLogPage = lazy(() => import("./pages/dashboard/AuditLogPage.tsx"));
 
 function RouteLoading() {
   return (
@@ -123,6 +126,30 @@ createRoot(document.getElementById("root")!).render(
                       element={
                         <RequireRole role="admin">
                           <AdminOverviewPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="moderation"
+                      element={
+                        <RequireRole role="admin">
+                          <ModerationPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="admin/listings"
+                      element={
+                        <RequireRole role="admin">
+                          <AdminListingsPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="admin/audit"
+                      element={
+                        <RequireRole role="admin">
+                          <AuditLogPage />
                         </RequireRole>
                       }
                     />

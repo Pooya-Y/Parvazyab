@@ -75,6 +75,62 @@ export interface OwnAgencyProfile {
   city: string | null;
   licenseNo: string | null;
   verified: boolean;
+  /** Asked for the verified badge and waiting for an administrator. */
+  verificationPending: boolean;
+}
+
+export interface ModerationQueue {
+  verificationRequests: {
+    agencyId: string;
+    slug: string;
+    name: string;
+    city: string | null;
+    licenseNo: string | null;
+    description: string;
+    website: string | null;
+    requestedAt: number;
+    listings: number;
+  }[];
+  reportedReviews: {
+    reviewId: string;
+    rating: number;
+    body: string;
+    status: "published" | "hidden";
+    author: string;
+    agencySlug: string | null;
+    agencyName: string;
+    reports: number;
+    reasons: string[];
+    createdAt: number;
+    lastReportedAt: number;
+  }[];
+  counts: { suspendedAccounts: number; suspendedListings: number; hiddenReviews: number };
+}
+
+export interface AdminListing {
+  id: string;
+  originCode: string;
+  destinationCode: string;
+  airline: string;
+  flightNo: string;
+  departAt: number;
+  priceToman: number;
+  isActive: boolean;
+  suspendedAt: number | null;
+  suspensionReason: string | null;
+  agencyName: string;
+  agencySuspended: boolean;
+}
+
+export interface AuditEntry {
+  id: string;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  details: Record<string, unknown>;
+  createdAt: number;
+  actorName: string | null;
+  actorContact: string | null;
 }
 
 export interface ExplanationReason {
@@ -207,6 +263,9 @@ export interface User {
   /** ISO timestamps; null until the email is verified / the password is first changed. */
   emailVerifiedAt: string | null;
   passwordChangedAt: string | null;
+  /** Set by an administrator: the account can't publish, review or create alerts. */
+  suspendedAt: string | null;
+  suspensionReason: string | null;
   createdAt: string;
 }
 
@@ -305,6 +364,9 @@ export interface Listing {
   priceToman: number;
   bookingUrl: string;
   isActive: boolean;
+  /** Set by an administrator; the listing stays hidden until lifted. */
+  suspendedAt?: string | null;
+  suspensionReason?: string | null;
 }
 
 export type ListingInput = Omit<Listing, "id" | "originCity" | "destinationCity" | "durationMin"> & { id?: string };

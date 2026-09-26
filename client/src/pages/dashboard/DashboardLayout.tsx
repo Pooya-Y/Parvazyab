@@ -1,9 +1,13 @@
 import type { ComponentType } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useSearchParams } from "react-router";
 import {
+  Ban,
   BellRing,
   Building2,
   ChartColumn,
+  Flag,
+  Plane,
+  ScrollText,
   FileSpreadsheet,
   Heart,
   Info,
@@ -53,7 +57,15 @@ function navFor(user: User): NavGroup[] {
     });
   }
   if (user.role === "admin") {
-    groups.push({ label: "مدیریت", items: [{ to: "/dashboard/admin", label: "نمای کلی", icon: ShieldCheck }] });
+    groups.push({
+      label: "مدیریت",
+      items: [
+        { to: "/dashboard/admin", label: "نمای کلی", icon: ShieldCheck },
+        { to: "/dashboard/moderation", label: "بررسی‌ها", icon: Flag },
+        { to: "/dashboard/admin/listings", label: "پروازها", icon: Plane },
+        { to: "/dashboard/admin/audit", label: "رویدادها", icon: ScrollText },
+      ],
+    });
   }
   return groups;
 }
@@ -90,6 +102,19 @@ export default function DashboardLayout() {
         </p>
       ) : null}
 
+      {user.suspendedAt ? (
+        <p
+          className="mt-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm leading-7"
+          role="status"
+        >
+          <Ban className="mt-1.5 size-4 shrink-0 text-destructive" aria-hidden />
+          <span>
+            حساب شما معلق شده است{user.suspensionReason ? `: ${user.suspensionReason}` : "."} تا رفع تعلیق، انتشار
+            پرواز، ثبت نظر و ساختن هشدار ممکن نیست. برای پیگیری به پشتیبانی پیام دهید.
+          </span>
+        </p>
+      ) : null}
+
       {unverified ? (
         <div className="mt-4 flex flex-col gap-3 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm sm:flex-row sm:items-center">
           <p className="flex flex-1 items-start gap-2 leading-7">
@@ -114,7 +139,7 @@ export default function DashboardLayout() {
               .flatMap((g) => g.items)
               .map((item) => (
                 <li key={item.to}>
-                  <NavLink to={item.to} className={linkClass}>
+                  <NavLink to={item.to} end className={linkClass}>
                     <item.icon className="size-4" aria-hidden />
                     {item.label}
                   </NavLink>
@@ -128,7 +153,7 @@ export default function DashboardLayout() {
                 <ul className="space-y-0.5">
                   {group.items.map((item) => (
                     <li key={item.to}>
-                      <NavLink to={item.to} className={linkClass}>
+                      <NavLink to={item.to} end className={linkClass}>
                         <item.icon className="size-4" aria-hidden />
                         {item.label}
                       </NavLink>
