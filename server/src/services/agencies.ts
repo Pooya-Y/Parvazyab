@@ -162,8 +162,13 @@ export async function ownProfile(accountId: string) {
   await ensureAgencyProfile(accountId);
   const row = await profileRow("account", accountId);
   if (!row) throw notFound();
+  const [{ pending }] = (await AppDataSource.query(
+    `SELECT verification_requested_at IS NOT NULL AS pending FROM agency_profiles WHERE account_id = $1`,
+    [accountId],
+  )) as { pending: boolean }[];
   const { accountId: _id, since: _since, ...details } = row;
-  return details;
+  // Only the agency itself learns whether it has asked to be verified.
+  return { ...details, verificationPending: pending && !row.verified };
 }
 
 export async function updateAgencyProfile(accountId: string, input: ProfileInput) {
