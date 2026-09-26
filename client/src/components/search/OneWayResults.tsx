@@ -5,6 +5,7 @@ import { FlightCard } from "@/components/flights/FlightCard";
 import { StateMessage } from "@/components/StateMessage";
 import { Button } from "@/components/ui/button";
 import { ShareButton } from "@/components/ShareButton";
+import { RoutePriceTrend } from "@/components/charts/RoutePriceTrend";
 import { airportShortCity } from "@/domain/airports";
 import { useAuth } from "@/hooks/use-auth";
 import { useSavedFlights } from "@/hooks/use-saved-flights";
@@ -80,6 +81,8 @@ export function OneWayResults({
           selected={state.date}
           hrefFor={(date) => `/search?${toSearchParams({ ...state, date })}`}
         />
+
+        <RoutePriceTrend collapsible originCode={state.from} destinationCode={state.to} className="mb-4" />
 
         <ResultsBody
           data={data}

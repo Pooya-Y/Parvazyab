@@ -67,6 +67,27 @@ export interface PriceCalendar {
   days: CalendarDay[];
 }
 
+export interface PricePoint {
+  date: string;
+  minPrice: number;
+  avgPrice: number;
+}
+
+export interface PriceHistory {
+  originCode: string;
+  destinationCode: string;
+  /** Oldest first; the last point is today. */
+  points: PricePoint[];
+  summary: {
+    current: number;
+    average: number;
+    low: number;
+    high: number;
+    deltaPercent: number;
+    verdict: "below" | "typical" | "above";
+  } | null;
+}
+
 export type SortMode = "best" | "cheapest" | "fastest" | "departure" | "arrival";
 
 export interface SearchParams {

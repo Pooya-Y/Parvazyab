@@ -6,6 +6,7 @@ import { StateMessage } from "@/components/StateMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShareButton } from "@/components/ShareButton";
+import { RoutePriceTrend } from "@/components/charts/RoutePriceTrend";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, safeExternalUrl } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
@@ -226,6 +227,8 @@ export default function FlightDetail() {
             : ""}
         </p>
       </section>
+
+      <RoutePriceTrend originCode={flight.originCode} destinationCode={flight.destinationCode} className="mt-8" />
 
       {similar.length > 0 ? (
         <section className="mt-8" aria-labelledby="similar-heading">

@@ -5,6 +5,7 @@ import type {
   Listing,
   ListingInput,
   PriceCalendar,
+  PriceHistory,
   PopularRoute,
   SavedFlight,
   SearchFacets,
@@ -90,6 +91,8 @@ export const api = {
     params: Omit<SearchParams, "date" | "sort" | "maxPriceToman"> & { start: string; days: number },
     signal?: AbortSignal,
   ) => request<PriceCalendar>("/search/calendar", { query: { ...params }, signal }),
+  priceHistory: (originCode: string, destinationCode: string, days: number, signal?: AbortSignal) =>
+    request<PriceHistory>(`/routes/${originCode}-${destinationCode}/price-history`, { query: { days }, signal }),
   popularRoutes: (signal?: AbortSignal) => request<PopularRoute[]>("/routes/popular", { signal }),
 
   auth: {
