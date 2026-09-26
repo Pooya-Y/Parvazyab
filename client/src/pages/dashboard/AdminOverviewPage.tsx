@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { isGuest } from "@/lib/account";
+import { formatMobile } from "@/lib/phone";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { formatPrice, toFaDigits } from "@/lib/persian";
@@ -114,7 +115,7 @@ export default function AdminOverviewPage() {
                     <td className="p-3">
                       <div className="font-medium">{u.agencyName || u.name}</div>
                       <div dir="ltr" className="text-start text-xs text-muted-foreground">
-                        {isGuest(u) ? "guest" : u.email}
+                        {isGuest(u) ? "guest" : (u.email ?? (u.phone ? formatMobile(u.phone) : ""))}
                       </div>
                     </td>
                     <td className="p-3">

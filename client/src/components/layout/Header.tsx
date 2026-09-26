@@ -11,6 +11,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/hooks/use-auth";
 import { ChevronDown, Heart, LayoutDashboard, LogIn, LogOut, Plane, UserCog, UserRound } from "lucide-react";
 import { isGuest } from "@/lib/account";
+import { formatMobile } from "@/lib/phone";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
@@ -54,7 +55,7 @@ function AccountMenu() {
           <span className="block truncate font-semibold">{displayName}</span>
           {isGuest(user) ? null : (
             <span className="block truncate text-xs text-muted-foreground" dir="ltr">
-              {user.email}
+              {user.email ?? (user.phone ? formatMobile(user.phone) : null)}
             </span>
           )}
         </DropdownMenuLabel>

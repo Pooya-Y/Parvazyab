@@ -133,7 +133,12 @@ export interface PopularRoute {
 export interface User {
   id: string;
   name: string;
-  email: string;
+  /** Accounts have an email, a verified mobile number (E.164), or both. */
+  email: string | null;
+  phone: string | null;
+  phoneVerifiedAt: string | null;
+  /** False for accounts that only ever signed in by SMS code. */
+  hasPassword: boolean;
   role: AccountRole;
   accountRole: "agency" | "user";
   agencyName?: string | null;
@@ -141,6 +146,17 @@ export interface User {
   emailVerifiedAt: string | null;
   passwordChangedAt: string | null;
   createdAt: string;
+}
+
+/** A one-time code on its way to a phone. */
+export interface OtpChallenge {
+  challengeId: string;
+  /** E.164 */
+  phone: string;
+  /** Epoch ms. */
+  expiresAt: number;
+  /** Seconds before another code may be requested. */
+  resendAfter: number;
 }
 
 export interface SavedFlight {

@@ -4,9 +4,11 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { FormError, MIN_PASSWORD_LENGTH, PasswordInput, PasswordRule } from "@/components/auth/fields";
+import { OtpFlow } from "@/components/auth/OtpFlow";
 import { useAuth } from "@/hooks/use-auth";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { isGuest } from "@/lib/account";
+import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { ArrowLeft, Loader2, UserRound } from "lucide-react";
 import { useEffect, useId, useState } from "react";
@@ -21,27 +23,101 @@ function safeRedirect(returnTo: string | null): string {
     : DEFAULT_REDIRECT;
 }
 
+type Method = "phone" | "email";
+type EmailMode = "signin" | "signup";
+
+/** After SMS sign-up: the account exists; ask what to call its owner (skippable). */
+function NameStep({ initialName, onDone }: { initialName: string; onDone: () => void }) {
+  const { applyUser } = useAuth();
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const id = useId();
+
+  const save = async () => {
+    if (name.trim().length < 2) {
+      setError("نام باید حداقل ۲ حرف باشد.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      applyUser((await api.account.updateProfile(name.trim())).user);
+      onDone();
+    } catch (err) {
+      setError(errorMessage(err, "نام ذخیره نشد. دوباره تلاش کنید."));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      className="space-y-4 p-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor={`${id}-name`}>نام و نام خانوادگی</Label>
+        <Input
+          id={`${id}-name`}
+          className="h-11"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="مثلاً علی رضایی"
+          autoComplete="name"
+          maxLength={120}
+          aria-describedby={`${id}-hint`}
+          disabled={busy}
+          autoFocus
+          required
+        />
+        <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+          تا نامی ننویسید، «{initialName}» خطابتان می‌کنیم.
+        </p>
+      </div>
+      <FormError message={error} />
+      <div className="flex gap-2">
+        <Button type="submit" className="h-11 flex-1" disabled={busy}>
+          {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
+          ذخیره و ادامه
+        </Button>
+        <Button type="button" variant="ghost" className="h-11" onClick={onDone} disabled={busy}>
+          بعداً
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export default function AuthPage() {
-  const { isLoading: sessionLoading, user, signIn, signUp, signInAsGuest } = useAuth();
+  const { isLoading: sessionLoading, user, signIn, signUp, signInAsGuest, applyUser } = useAuth();
   // Guests come here to sign up or sign in for real; their saved flights carry over either way.
   const guest = user !== null && isGuest(user);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = safeRedirect(searchParams.get("returnTo"));
-  const [tab, setTab] = useState(searchParams.get("mode") === "signup" ? "signup" : "signin");
+  const wantsSignup = searchParams.get("mode") === "signup";
+  const [method, setMethod] = useState<Method>(
+    wantsSignup || searchParams.get("method") === "email" ? "email" : "phone",
+  );
+  const [mode, setMode] = useState<EmailMode>(wantsSignup ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState<"form" | "guest" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Set while a just-created SMS account picks its name. */
+  const [naming, setNaming] = useState<string | null>(null);
   const ids = useId();
 
-  useDocumentTitle(tab === "signup" ? "ثبت‌نام" : "ورود");
+  useDocumentTitle(naming ? "خوش آمدید" : method === "email" && mode === "signup" ? "ثبت‌نام" : "ورود");
 
   // Already signed in (e.g. opened /auth from a bookmark).
   useEffect(() => {
-    if (!sessionLoading && user && !guest && busy === null) navigate(redirect, { replace: true });
-  }, [sessionLoading, user, guest, busy, navigate, redirect]);
+    if (!sessionLoading && user && !guest && busy === null && naming === null) navigate(redirect, { replace: true });
+  }, [sessionLoading, user, guest, busy, naming, navigate, redirect]);
 
   const run = async (kind: "form" | "guest", action: () => Promise<unknown>, fallback: string) => {
     setBusy(kind);
@@ -63,133 +139,191 @@ export default function AuthPage() {
     return run("form", () => signUp(name.trim(), email.trim(), password), "ثبت‌نام ناموفق بود. دوباره تلاش کنید.");
   };
 
+  const verifyCode = async (challengeId: string, code: string) => {
+    const res = await api.auth.verifyOtp(challengeId, code);
+    // Set before the session changes, so the redirect above waits for the name step.
+    if (res.created) setNaming(res.user.name);
+    applyUser(res.user);
+    if (!res.created) navigate(redirect, { replace: true });
+  };
+
+  if (naming !== null) {
+    return (
+      <AuthShell title="خوش آمدید" description="حساب شما ساخته شد. نامتان را بنویسید تا با آن خطابتان کنیم.">
+        <NameStep initialName={naming} onDone={() => navigate(redirect, { replace: true })} />
+      </AuthShell>
+    );
+  }
+
   const disabled = busy !== null;
-  const emailField = (id: string) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>ایمیل</Label>
-      <Input
-        id={id}
-        type="email"
-        inputMode="email"
-        dir="ltr"
-        className="h-11"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="name@example.com"
-        autoComplete="email"
-        disabled={disabled}
-        required
-      />
-    </div>
-  );
+  const switchMode = (next: EmailMode) => {
+    setMode(next);
+    setError(null);
+  };
 
   return (
     <AuthShell
-      title={tab === "signup" ? "ساخت حساب پروازیاب" : "ورود به پروازیاب"}
+      title={method === "email" && mode === "signup" ? "ساخت حساب پروازیاب" : "ورود به پروازیاب"}
       description={
         guest
           ? "پروازهایی که در حساب مهمان ذخیره کرده‌اید به حساب دائمی منتقل می‌شوند."
-          : "برای ذخیره پروازها و انتشار پرواز (آژانس‌ها) وارد شوید."
+          : method === "phone"
+            ? "با کد پیامکی وارد شوید؛ اگر حساب ندارید، همین حالا ساخته می‌شود."
+            : "برای ذخیره پروازها و انتشار پرواز (آژانس‌ها) وارد شوید."
       }
     >
       <Tabs
-        value={tab}
+        value={method}
         onValueChange={(v) => {
-          setTab(v);
+          setMethod(v as Method);
           setError(null);
         }}
         className="p-6"
       >
         <TabsList className="grid h-10 w-full grid-cols-2">
-          <TabsTrigger value="signin">ورود</TabsTrigger>
-          <TabsTrigger value="signup">ثبت‌نام</TabsTrigger>
+          <TabsTrigger value="phone">کد پیامکی</TabsTrigger>
+          <TabsTrigger value="email">ایمیل و رمز عبور</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="signin" className="mt-5">
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void submitSignIn();
-            }}
-          >
-            {emailField(`${ids}-signin-email`)}
-            <div className="space-y-1.5">
-              <div className="flex items-baseline justify-between gap-2">
-                <Label htmlFor={`${ids}-signin-password`}>رمز عبور</Label>
-                {/* The typed email rides along in router state, not in the URL. */}
-                <Link
-                  to="/auth/forgot"
-                  state={{ email: email.trim() }}
-                  className="text-xs font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  رمز عبور را فراموش کرده‌اید؟
-                </Link>
-              </div>
-              <PasswordInput
-                id={`${ids}-signin-password`}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                disabled={disabled}
-                required
-              />
-            </div>
-            <FormError message={error} />
-            <Button type="submit" className="h-11 w-full" disabled={disabled}>
-              {busy === "form" ? <Loader2 className="animate-spin" aria-hidden /> : null}
-              ورود
-              {busy === "form" ? null : <ArrowLeft aria-hidden />}
-            </Button>
-          </form>
+        <TabsContent value="phone" className="mt-5">
+          <OtpFlow request={api.auth.requestOtp} verify={verifyCode} verifyLabel="ورود" />
         </TabsContent>
 
-        <TabsContent value="signup" className="mt-5">
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void submitSignUp();
-            }}
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor={`${ids}-signup-name`}>نام و نام خانوادگی</Label>
-              <Input
-                id={`${ids}-signup-name`}
-                className="h-11"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="مثلاً علی رضایی"
-                autoComplete="name"
-                minLength={2}
-                maxLength={120}
-                disabled={disabled}
-                required
-              />
-            </div>
-            {emailField(`${ids}-signup-email`)}
-            <div className="space-y-1.5">
-              <Label htmlFor={`${ids}-signup-password`}>رمز عبور</Label>
-              <PasswordInput
-                id={`${ids}-signup-password`}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={MIN_PASSWORD_LENGTH}
-                maxLength={128}
-                aria-describedby={`${ids}-password-hint`}
-                disabled={disabled}
-                required
-              />
-              <PasswordRule id={`${ids}-password-hint`} password={password} />
-            </div>
-            <FormError message={error} />
-            <Button type="submit" className="h-11 w-full" disabled={disabled}>
-              {busy === "form" ? <Loader2 className="animate-spin" aria-hidden /> : null}
-              ساخت حساب
-              {busy === "form" ? null : <ArrowLeft aria-hidden />}
-            </Button>
-          </form>
+        <TabsContent value="email" className="mt-5">
+          {mode === "signin" ? (
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submitSignIn();
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor={`${ids}-email`}>ایمیل</Label>
+                <Input
+                  id={`${ids}-email`}
+                  type="email"
+                  inputMode="email"
+                  dir="ltr"
+                  className="h-11"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  autoComplete="email"
+                  disabled={disabled}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <Label htmlFor={`${ids}-password`}>رمز عبور</Label>
+                  {/* The typed email rides along in router state, not in the URL. */}
+                  <Link
+                    to="/auth/forgot"
+                    state={{ email: email.trim() }}
+                    className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    رمز عبور را فراموش کرده‌اید؟
+                  </Link>
+                </div>
+                <PasswordInput
+                  id={`${ids}-password`}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  disabled={disabled}
+                  required
+                />
+              </div>
+              <FormError message={error} />
+              <Button type="submit" className="h-11 w-full" disabled={disabled}>
+                {busy === "form" ? <Loader2 className="animate-spin" aria-hidden /> : null}
+                ورود
+                {busy === "form" ? null : <ArrowLeft aria-hidden />}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                حساب ندارید؟{" "}
+                <button
+                  type="button"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  onClick={() => switchMode("signup")}
+                >
+                  ثبت‌نام با ایمیل
+                </button>
+              </p>
+            </form>
+          ) : (
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submitSignUp();
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor={`${ids}-name`}>نام و نام خانوادگی</Label>
+                <Input
+                  id={`${ids}-name`}
+                  className="h-11"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="مثلاً علی رضایی"
+                  autoComplete="name"
+                  minLength={2}
+                  maxLength={120}
+                  disabled={disabled}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`${ids}-email`}>ایمیل</Label>
+                <Input
+                  id={`${ids}-email`}
+                  type="email"
+                  inputMode="email"
+                  dir="ltr"
+                  className="h-11"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  autoComplete="email"
+                  disabled={disabled}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`${ids}-password`}>رمز عبور</Label>
+                <PasswordInput
+                  id={`${ids}-password`}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={MIN_PASSWORD_LENGTH}
+                  maxLength={128}
+                  aria-describedby={`${ids}-password-hint`}
+                  disabled={disabled}
+                  required
+                />
+                <PasswordRule id={`${ids}-password-hint`} password={password} />
+              </div>
+              <FormError message={error} />
+              <Button type="submit" className="h-11 w-full" disabled={disabled}>
+                {busy === "form" ? <Loader2 className="animate-spin" aria-hidden /> : null}
+                ساخت حساب
+                {busy === "form" ? null : <ArrowLeft aria-hidden />}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                حساب دارید؟{" "}
+                <button
+                  type="button"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  onClick={() => switchMode("signin")}
+                >
+                  ورود
+                </button>
+              </p>
+            </form>
+          )}
         </TabsContent>
 
         {guest ? null : (

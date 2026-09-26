@@ -51,7 +51,8 @@ export default function DashboardLayout() {
   if (!user) return null; // RequireAuth renders this only for signed-in users.
   const groups = navFor(user);
   // The account page shows the same status next to the email; don't say it twice.
-  const unverified = !isGuest(user) && user.emailVerifiedAt === null && pathname !== "/dashboard/account";
+  const unverified =
+    user.email !== null && !isGuest(user) && user.emailVerifiedAt === null && pathname !== "/dashboard/account";
 
   return (
     <PageShell className="container-page py-6 sm:py-8">

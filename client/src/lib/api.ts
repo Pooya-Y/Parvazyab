@@ -8,6 +8,7 @@ import type {
   PriceHistory,
   ExploreResult,
   ExploreScope,
+  OtpChallenge,
   PopularRoute,
   SavedFlight,
   SearchFacets,
@@ -114,6 +115,11 @@ export const api = {
     resetPassword: (token: string, password: string) =>
       request<{ user: User }>("/auth/password/reset", { method: "POST", body: { token, password } }),
     verifyEmail: (token: string) => request<{ ok: true }>("/auth/email/verify", { method: "POST", body: { token } }),
+    /** Texts a sign-in code; the same answer whether or not the number has an account. */
+    requestOtp: (phone: string) => request<OtpChallenge>("/auth/otp/request", { method: "POST", body: { phone } }),
+    /** Signs in to the number's account, creating it (`created`) if there was none. */
+    verifyOtp: (challengeId: string, code: string) =>
+      request<{ user: User; created: boolean }>("/auth/otp/verify", { method: "POST", body: { challengeId, code } }),
   },
 
   account: {
@@ -123,6 +129,14 @@ export const api = {
       request<{ user: User }>("/account/password", { method: "PUT", body: { currentPassword, newPassword } }),
     resendVerification: () => request<{ ok: true }>("/account/email/verification", { method: "POST" }),
     signOutOtherSessions: () => request<void>("/account/sessions", { method: "DELETE" }),
+    requestPhoneLink: (phone: string) =>
+      request<OtpChallenge>("/account/phone/verification", { method: "POST", body: { phone } }),
+    confirmPhoneLink: (challengeId: string, code: string) =>
+      request<{ user: User }>("/account/phone", { method: "PUT", body: { challengeId, code } }),
+    removePhone: () => request<{ user: User }>("/account/phone", { method: "DELETE" }),
+    /** For accounts made by SMS code: adds email sign-in and sends a verification link. */
+    addEmail: (email: string, password: string) =>
+      request<{ user: User }>("/account/email", { method: "POST", body: { email, password } }),
   },
 
   saved: {

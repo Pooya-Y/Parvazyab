@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { CircleAlert, CircleCheck, Loader2, LogOut, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { FormError, MIN_PASSWORD_LENGTH, PasswordInput, PasswordRule } from "@/components/auth/fields";
+import { OtpFlow } from "@/components/auth/OtpFlow";
 import { ResendVerificationButton } from "@/components/auth/ResendVerificationButton";
 import { StateMessage } from "@/components/StateMessage";
 import {
@@ -25,7 +26,100 @@ import { isGuest } from "@/lib/account";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { formatJalaliDate } from "@/lib/persian";
+import { formatMobile } from "@/lib/phone";
 import type { User } from "@/lib/types";
+
+function VerifiedBadge({ verified }: { verified: boolean }) {
+  return verified ? (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
+      <CircleCheck className="size-3.5" aria-hidden />
+      تأییدشده
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+      <CircleAlert className="size-3.5" aria-hidden />
+      تأییدنشده
+    </span>
+  );
+}
+
+/** For accounts made by SMS code: an email plus the password that goes with it. */
+function AddEmailForm() {
+  const { applyUser } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const id = useId();
+
+  const submit = async () => {
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError("رمز عبور باید حداقل ۸ نویسه باشد.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      applyUser((await api.account.addEmail(email.trim(), password)).user);
+      toast.success("ایمیل افزوده شد. پیوند تأیید را برایتان فرستادیم.");
+    } catch (err) {
+      setError(errorMessage(err, "ایمیل افزوده نشد. دوباره تلاش کنید."));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      className="mt-3 space-y-4 sm:max-w-sm"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <p className="text-sm leading-7 text-muted-foreground">
+        با افزودن ایمیل می‌توانید با ایمیل و رمز عبور هم وارد شوید و هشدارهای قیمت را با ایمیل بگیرید.
+      </p>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${id}-email`}>نشانی ایمیل</Label>
+        <Input
+          id={`${id}-email`}
+          type="email"
+          inputMode="email"
+          dir="ltr"
+          className="h-10"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="name@example.com"
+          autoComplete="email"
+          maxLength={320}
+          disabled={busy}
+          required
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${id}-password`}>رمز عبور</Label>
+        <PasswordInput
+          id={`${id}-password`}
+          className="h-10"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
+          minLength={MIN_PASSWORD_LENGTH}
+          maxLength={128}
+          aria-describedby={`${id}-rule`}
+          disabled={busy}
+          required
+        />
+        <PasswordRule id={`${id}-rule`} password={password} />
+      </div>
+      <FormError message={error} />
+      <Button type="submit" variant="outline" disabled={busy}>
+        {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
+        افزودن ایمیل
+      </Button>
+    </form>
+  );
+}
 
 /** Settings row: what it is on the start side, the controls beside it (stacked on phones). */
 function SettingsSection({
@@ -62,7 +156,6 @@ function ProfileSection({ user }: { user: User }) {
   const id = useId();
   const trimmed = name.trim();
   const changed = trimmed !== user.name;
-  const verified = user.emailVerifiedAt !== null;
 
   const save = async () => {
     if (trimmed.length < 2) {
@@ -113,31 +206,116 @@ function ProfileSection({ user }: { user: User }) {
 
       <div className="mt-6">
         <p className="text-sm font-medium">ایمیل</p>
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-          <bdi dir="ltr" className="inline-block max-w-full break-all">
-            {user.email}
-          </bdi>
-          {verified ? (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
-              <CircleCheck className="size-3.5" aria-hidden />
-              تأییدشده
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <CircleAlert className="size-3.5" aria-hidden />
-              تأییدنشده
-            </span>
-          )}
-        </p>
-        {verified ? null : (
-          <div className="mt-3 space-y-2">
-            <p className="text-sm leading-7 text-muted-foreground">
-              پیوند تأیید را به این نشانی فرستادیم. تا ایمیل تأیید نشود، هشدار قیمتی برایتان فرستاده نمی‌شود.
+        {user.email ? (
+          <>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              <bdi dir="ltr" className="inline-block max-w-full break-all">
+                {user.email}
+              </bdi>
+              <VerifiedBadge verified={user.emailVerifiedAt !== null} />
             </p>
-            <ResendVerificationButton />
-          </div>
+            {user.emailVerifiedAt !== null ? null : (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm leading-7 text-muted-foreground">
+                  پیوند تأیید را به این نشانی فرستادیم. تا ایمیل تأیید نشود، هشدار قیمتی برایتان فرستاده نمی‌شود.
+                </p>
+                <ResendVerificationButton />
+              </div>
+            )}
+          </>
+        ) : (
+          <AddEmailForm />
         )}
       </div>
+    </SettingsSection>
+  );
+}
+
+function PhoneSection({ user }: { user: User }) {
+  const { applyUser } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  const confirm = async (challengeId: string, code: string) => {
+    applyUser((await api.account.confirmPhoneLink(challengeId, code)).user);
+    setEditing(false);
+    toast.success("شمارهٔ موبایل تأیید شد و به حساب وصل شد.");
+  };
+
+  const remove = async () => {
+    setRemoving(true);
+    try {
+      applyUser((await api.account.removePhone()).user);
+      toast.success("شمارهٔ موبایل از حساب حذف شد.");
+    } catch (err) {
+      toast.error(errorMessage(err, "حذف انجام نشد. دوباره تلاش کنید."));
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <SettingsSection
+      title="شمارهٔ موبایل"
+      description="با شمارهٔ تأییدشده می‌توانید بدون رمز عبور، با کد پیامکی وارد شوید."
+    >
+      {editing ? (
+        <div className="sm:max-w-sm">
+          <OtpFlow
+            request={api.account.requestPhoneLink}
+            verify={confirm}
+            requestLabel="فرستادن کد تأیید"
+            verifyLabel="تأیید شماره"
+            onCancel={() => setEditing(false)}
+            autoFocus
+          />
+        </div>
+      ) : user.phone ? (
+        <>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <bdi dir="ltr" className="tabular-nums">
+              {formatMobile(user.phone)}
+            </bdi>
+            <VerifiedBadge verified />
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              تغییر شماره
+            </Button>
+            {user.email ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" disabled={removing}>
+                    {removing ? <Loader2 className="animate-spin" aria-hidden /> : null}
+                    حذف شماره
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>شمارهٔ موبایل حذف شود؟</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      پس از حذف، فقط با ایمیل و رمز عبور وارد می‌شوید. هر وقت خواستید می‌توانید دوباره شماره اضافه کنید.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>انصراف</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => void remove()}>حذف شماره</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : null}
+          </div>
+          {user.email ? null : (
+            <p className="mt-2 text-xs leading-6 text-muted-foreground">
+              این شماره تنها راه ورود به حساب است؛ برای حذفش اول ایمیل اضافه کنید.
+            </p>
+          )}
+        </>
+      ) : (
+        <Button variant="outline" onClick={() => setEditing(true)}>
+          افزودن شمارهٔ موبایل
+        </Button>
+      )}
     </SettingsSection>
   );
 }
@@ -187,7 +365,7 @@ function PasswordSection({ user }: { user: User }) {
         }}
       >
         {/* Lets password managers file the new password under the right account. */}
-        <input type="email" name="username" autoComplete="username" value={user.email} readOnly hidden />
+        <input type="email" name="username" autoComplete="username" value={user.email ?? ""} readOnly hidden />
         <div className="space-y-1.5">
           <Label htmlFor={`${id}-current`}>رمز عبور فعلی</Label>
           <PasswordInput
@@ -293,7 +471,8 @@ export default function AccountPage() {
       ) : (
         <div className="divide-y rounded-lg border bg-card">
           <ProfileSection user={user} />
-          <PasswordSection user={user} />
+          <PhoneSection user={user} />
+          {user.hasPassword ? <PasswordSection user={user} /> : null}
           <SessionsSection />
         </div>
       )}
