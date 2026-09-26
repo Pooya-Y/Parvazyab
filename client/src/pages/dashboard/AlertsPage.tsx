@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { BellPlus, Loader2, Mail, MailX, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { NotificationList } from "@/components/alerts/NotificationList";
+import { PushToggle } from "@/components/alerts/PushToggle";
 import { LoadError, RouteLabel } from "@/components/dashboard/common";
 import { StateMessage } from "@/components/StateMessage";
 import {
@@ -275,6 +276,7 @@ export default function AlertsPage() {
       <p className="mb-4 text-sm leading-7 text-muted-foreground">
         قیمت مسیرهای شما را هر ۱۵ دقیقه بررسی می‌کنیم و وقتی ارزان‌تر شد، خبرتان می‌کنیم.
       </p>
+      <PushToggle />
       <AlertsSection now={now} />
       <NotificationsSection now={now} />
     </>

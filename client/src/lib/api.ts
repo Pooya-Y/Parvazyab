@@ -255,6 +255,14 @@ export const api = {
       request<{ ok: true }>(`/alerts/${encodeURIComponent(id)}/unsubscribe`, { method: "POST", query: { sig } }),
   },
 
+  push: {
+    /** null: push is switched off on this server. */
+    publicKey: () => request<{ publicKey: string | null }>("/push/public-key"),
+    subscribe: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+      request<{ ok: true }>("/push/subscriptions", { method: "POST", body: subscription }),
+    unsubscribe: (endpoint: string) => request<void>("/push/subscriptions", { method: "DELETE", body: { endpoint } }),
+  },
+
   notifications: {
     list: (limit = 20, signal?: AbortSignal) => request<Inbox>("/notifications", { query: { limit }, signal }),
     unreadCount: (signal?: AbortSignal) => request<{ count: number }>("/notifications/unread-count", { signal }),

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { invalidate } from "@/lib/use-api-query";
+import { disablePush } from "@/lib/push";
 import type { User } from "@/lib/types";
 
 interface AuthContextValue {
@@ -66,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInAsGuest: async () => accept((await api.auth.guest()).user),
       signOut: async () => {
         try {
+          // A shared device must stop getting this account's notifications.
+          await disablePush().catch(() => undefined);
           await api.auth.logout();
         } finally {
           setUser(null);
