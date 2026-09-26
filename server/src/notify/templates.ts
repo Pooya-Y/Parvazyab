@@ -1,5 +1,6 @@
 import { config } from "../config/env";
 import { TEHRAN_OFFSET_MS } from "../domain/time";
+import { escapeHtml } from "../lib/html";
 
 /**
  * Transactional email in Persian. Each message has a plain-text part that reads
@@ -23,8 +24,7 @@ const COLOR = {
 
 const FONT = "Vazirmatn, Tahoma, 'Segoe UI', Arial, sans-serif";
 
-const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-export const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (c) => ESCAPES[c]);
+export { escapeHtml };
 
 /** An absolute link into the web app. Tokens go in the fragment, which never reaches a server log or Referer. */
 export function appLink(path: string, fragment?: Record<string, string>): string {
