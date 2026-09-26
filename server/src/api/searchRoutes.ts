@@ -5,7 +5,8 @@ import { ALL_AIRPORTS } from "../domain/airports";
 import { findFlight, searchFacets, searchFlights } from "../services/flightService";
 import { cached } from "../services/redis";
 import { notFound } from "../http/errors";
-import { airportCode, routeQuerySchema, searchQuerySchema } from "./schemas";
+import { priceCalendar } from "../services/priceCalendar";
+import { airportCode, calendarQuerySchema, routeQuerySchema, searchQuerySchema } from "./schemas";
 
 const router = Router();
 
@@ -27,6 +28,11 @@ router.get("/routes/popular", async (_req, res) => {
 
 router.get("/search", async (req, res) => {
   res.json(await searchFlights(searchQuerySchema.parse(req.query)));
+});
+
+/** Cheapest price per Iran calendar day, honouring the same filters as /search. */
+router.get("/search/calendar", async (req, res) => {
+  res.json(await priceCalendar(calendarQuerySchema.parse(req.query)));
 });
 
 router.get("/search/facets", async (req, res) => {

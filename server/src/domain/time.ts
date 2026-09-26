@@ -3,7 +3,11 @@
  * offset since daylight saving was abolished in 2022, so a constant offset is
  * exact for every flight this app can list — and independent of the server's TZ.
  */
-export const TEHRAN_OFFSET_MS = 210 * 60_000;
+export const TEHRAN_OFFSET_MINUTES = 210;
+export const TEHRAN_OFFSET_MS = TEHRAN_OFFSET_MINUTES * 60_000;
+/** SQL expression for a timestamptz column's Tehran wall-clock timestamp. */
+export const tehranWallClockSql = (column: string) =>
+  `((${column} AT TIME ZONE 'UTC') + interval '${TEHRAN_OFFSET_MINUTES} minutes')`;
 const DAY_MS = 86_400_000;
 
 const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -36,4 +40,15 @@ export function tehranWallClock(dayOffset: number, hour: number, minute: number,
   const shifted = new Date(now + TEHRAN_OFFSET_MS);
   const utc = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate() + dayOffset, hour, minute);
   return new Date(utc - TEHRAN_OFFSET_MS);
+}
+
+/** `yyyy-mm-dd` plus `days` calendar days (pure date arithmetic, no time zone). */
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/** Today's `yyyy-mm-dd` in Tehran. */
+export function tehranTodayKey(now = Date.now()): string {
+  return new Date(now + TEHRAN_OFFSET_MS).toISOString().slice(0, 10);
 }

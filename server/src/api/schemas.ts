@@ -28,32 +28,51 @@ function distinctRoute(v: { originCode: string; destinationCode: string }, ctx: 
 
 export const routeQuerySchema = z.object(routeShape).superRefine(distinctRoute);
 
+/** Filters shared by search and the price calendar, so the two never disagree. */
+const flightFilterShape = {
+  airlines: z
+    .string()
+    .max(2000)
+    .optional()
+    .transform((s) =>
+      s
+        ?.split(",")
+        .map((a) => a.trim())
+        .filter(Boolean),
+    ),
+  maxStops: z.coerce.number().int().min(0).max(3).optional(),
+  cabin: z.enum(["economy", "business"]).optional(),
+  fareType: z.enum(FARE_TYPES).optional(),
+  directOnly: queryBoolean.optional(),
+  departFromHour: hour.optional(),
+  departToHour: hour.optional(),
+  arriveFromHour: hour.optional(),
+  arriveToHour: hour.optional(),
+};
+
 export const searchQuerySchema = z
   .object({
     ...routeShape,
+    ...flightFilterShape,
     sort: z.enum(SORT_MODES).optional(),
     mode: z.enum(RANKING_MODES).optional(),
-    airlines: z
-      .string()
-      .max(2000)
-      .optional()
-      .transform((s) =>
-        s
-          ?.split(",")
-          .map((a) => a.trim())
-          .filter(Boolean),
-      ),
-    maxStops: z.coerce.number().int().min(0).max(3).optional(),
-    cabin: z.enum(["economy", "business"]).optional(),
-    fareType: z.enum(FARE_TYPES).optional(),
     maxPriceToman: z.coerce.number().positive().optional(),
-    directOnly: queryBoolean.optional(),
-    departFromHour: hour.optional(),
-    departToHour: hour.optional(),
-    arriveFromHour: hour.optional(),
-    arriveToHour: hour.optional(),
   })
   .superRefine(distinctRoute);
+
+export const MAX_CALENDAR_DAYS = 62;
+
+export const calendarQuerySchema = z
+  .object({
+    originCode: airportCode,
+    destinationCode: airportCode,
+    start: dateKey,
+    days: z.coerce.number().int().min(1).max(MAX_CALENDAR_DAYS).default(31),
+    ...flightFilterShape,
+  })
+  .superRefine(distinctRoute);
+
+export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
 

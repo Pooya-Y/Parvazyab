@@ -13,12 +13,13 @@ import {
   type FareType,
   type SearchFilters,
 } from "./flightsCore";
-
-const CABINS: Cabin[] = ["economy", "business"];
-const FARE_TYPES: FareType[] = ["scheduled", "charter"];
+import { whereVisible } from "./visibility";
 import { resolveCanonicalAirlineName } from "../domain/airlineRegistry";
 import { tehranDayBounds } from "../domain/time";
 import type { SearchQuery } from "../api/schemas";
+
+const CABINS: Cabin[] = ["economy", "business"];
+const FARE_TYPES: FareType[] = ["scheduled", "charter"];
 
 export const SEARCH_CACHE_PREFIX = "search:";
 const SEARCH_CACHE_TTL_SECONDS = 30;
@@ -32,13 +33,12 @@ const FALLBACK_AGENCY_NAME = "آژانس";
 export function loadRouteFlights(originCode: string, destinationCode: string, date?: string): Promise<FlightCard[]> {
   const key = `${SEARCH_CACHE_PREFIX}${originCode}:${destinationCode}:${date ?? "all"}`;
   return cached(key, SEARCH_CACHE_TTL_SECONDS, async () => {
-    const qb = flightListings()
-      .createQueryBuilder("f")
-      .where("f.originCode = :originCode", { originCode })
-      .andWhere("f.destinationCode = :destinationCode", { destinationCode })
-      .andWhere("f.isActive = true")
-      // Departed flights can't be booked.
-      .andWhere("f.departAt > :now", { now: new Date() })
+    const qb = whereVisible(
+      flightListings()
+        .createQueryBuilder("f")
+        .where("f.originCode = :originCode", { originCode })
+        .andWhere("f.destinationCode = :destinationCode", { destinationCode }),
+    )
       .orderBy("f.departAt", "ASC")
       .limit(MAX_LISTINGS_PER_ROUTE);
     const bounds = date ? tehranDayBounds(date) : null;
