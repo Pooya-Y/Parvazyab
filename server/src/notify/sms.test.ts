@@ -16,7 +16,7 @@ describe("Kavenegar SMS transport", () => {
   let reply: { status: number; body: unknown } = { status: 200, body: { return: { status: 200 } } };
 
   before(async () => {
-    sms = await import("./sms");
+    sms = await import("./sms.js");
     globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
       calls.push({ url: String(url), init });
       return new Response(JSON.stringify(reply.body), { status: reply.status });
