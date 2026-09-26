@@ -15,6 +15,9 @@ export const AUDIT_ACTIONS = [
   "account.phone_linked",
   "account.phone_removed",
   "account.email_added",
+  "api_key.created",
+  "api_key.revoked",
+  "listing.imported",
   "admin.role_changed",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

@@ -1,9 +1,14 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { z } from "zod";
 import { accounts } from "../database/dataSource";
 import { requireRole, requireUser, sanitizeUser, sessionUser } from "../auth/auth";
 import { audit } from "../services/audit";
 import { clickStats } from "../services/clicks";
+import { createApiKey, listApiKeys, revokeApiKey } from "../services/apiKeys";
+import { csvToRows, listingsCsv, planImport, templateCsv } from "../services/listingImport";
+import { tehranTodayKey } from "../domain/time";
+import { HttpError } from "../http/errors";
+import { runImport } from "./importResponse";
 import {
   adminStats,
   agencyStats,
@@ -72,6 +77,86 @@ dashboardRoutes.get("/stats", agencyOnly, async (_req, res) => {
 dashboardRoutes.get("/clicks", agencyOnly, async (req, res) => {
   const { days } = clickStatsQuerySchema.parse(req.query);
   res.json(await clickStats(sessionUser(res).id, days));
+});
+
+/** A CSV download: UTF-8 with BOM (Excel), never cached. */
+function sendCsv(res: express.Response, filename: string, csv: string) {
+  res.set({
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Cache-Control": "no-store",
+  });
+  res.send(csv);
+}
+
+dashboardRoutes.get("/listings/export.csv", agencyOnly, async (_req, res) => {
+  sendCsv(res, `parvazyab-listings-${tehranTodayKey()}.csv`, await listingsCsv(sessionUser(res).id));
+});
+
+dashboardRoutes.get("/listings/template.csv", agencyOnly, (_req, res) => {
+  sendCsv(res, "parvazyab-listings-template.csv", templateCsv());
+});
+
+const importQuery = z.object({
+  commit: z.enum(["true", "false"]).default("false"),
+  skipInvalid: z.enum(["true", "false"]).default("false"),
+});
+
+/**
+ * CSV import: `commit=false` (the default) only reports what each row would do;
+ * `commit=true` writes, all or nothing unless `skipInvalid=true`.
+ */
+dashboardRoutes.post(
+  "/listings/import",
+  agencyOnly,
+  express.text({ type: ["text/csv", "text/plain", "application/csv"], limit: "2mb" }),
+  async (req, res) => {
+    if (typeof req.body !== "string") throw new HttpError(415, "UNSUPPORTED_MEDIA_TYPE");
+    const { commit, skipInvalid } = importQuery.parse(req.query);
+    const user = sessionUser(res);
+    const plan = await planImport(user.id, csvToRows(req.body), { columnNames: true });
+    const written = await runImport(res, user.id, plan, {
+      dryRun: commit !== "true",
+      skipInvalid: skipInvalid === "true",
+    });
+    if (written) {
+      await audit(req, {
+        actorId: user.id,
+        action: "listing.imported",
+        targetType: "account",
+        targetId: user.id,
+        details: { created: plan.counts.create, updated: plan.counts.update, skipped: plan.counts.error },
+      });
+    }
+  },
+);
+
+dashboardRoutes.get("/api-keys", agencyOnly, async (_req, res) => {
+  res.json(await listApiKeys(sessionUser(res).id));
+});
+
+dashboardRoutes.post("/api-keys", agencyOnly, async (req, res) => {
+  const { name } = z.object({ name: z.string().trim().min(1).max(60) }).parse(req.body);
+  const user = sessionUser(res);
+  const key = await createApiKey(user.id, name);
+  await audit(req, {
+    actorId: user.id,
+    action: "api_key.created",
+    targetType: "api_key",
+    targetId: key.id,
+    details: { name, prefix: key.prefix },
+  });
+  // The only time the key itself is ever sent.
+  res.set("Cache-Control", "no-store");
+  res.status(201).json(key);
+});
+
+dashboardRoutes.delete("/api-keys/:id", agencyOnly, async (req, res) => {
+  const user = sessionUser(res);
+  const id = uuidParam.parse(req.params.id);
+  await revokeApiKey(user.id, id);
+  await audit(req, { actorId: user.id, action: "api_key.revoked", targetType: "api_key", targetId: id });
+  res.status(204).end();
 });
 
 dashboardRoutes.get("/listings", agencyOnly, async (_req, res) => {

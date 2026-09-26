@@ -74,7 +74,8 @@ export async function unsaveFlight(accountId: string, flightKey: string) {
 // Agency listings
 // ---------------------------------------------------------------------------
 
-function toListingColumns(b: ListingInput) {
+/** Validated input → stored columns: canonical airline and airport cities, derived duration. */
+export function toListingColumns(b: ListingInput) {
   if (b.originCode === b.destinationCode) throw new HttpError(400, "SAME_ORIGIN_DESTINATION");
   if (b.arriveAt <= b.departAt) throw new HttpError(400, "ARRIVAL_BEFORE_DEPARTURE");
   const origin = findAirport(b.originCode);
@@ -98,6 +99,8 @@ function toListingColumns(b: ListingInput) {
     isActive: b.isActive,
   };
 }
+
+export type ListingColumns = ReturnType<typeof toListingColumns>;
 
 export async function listListings(accountId: string) {
   const rows = await flightListings().find({ where: { accountId }, order: { departAt: "DESC" } });

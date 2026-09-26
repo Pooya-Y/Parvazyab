@@ -11,6 +11,8 @@ export class HttpError extends Error {
     readonly code: string,
     /** Sent with the error response, e.g. Retry-After on a 429. */
     readonly headers?: Record<string, string>,
+    /** Codes that pinpoint the problem, e.g. the missing columns of an import. */
+    readonly details?: string[],
   ) {
     super(code);
     this.name = "HttpError";
@@ -33,7 +35,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
   if (err instanceof HttpError) {
     if (err.headers) res.set(err.headers);
-    res.status(err.status).json({ error: err.code });
+    res.status(err.status).json(err.details ? { error: err.code, details: err.details } : { error: err.code });
     return;
   }
   // body-parser errors carry a `type` and a 4xx status.
