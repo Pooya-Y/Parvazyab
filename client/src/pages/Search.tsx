@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
 import { SearchX } from "lucide-react";
 import { PageShell } from "@/components/layout/PageShell";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { airportShortCity } from "@/domain/airports";
 import { isRoundTrip, parseSearchState, toSearchParams, type SearchState } from "@/lib/search-state";
 import { useDocumentTitle } from "@/hooks/use-document-title";
+import { recordSearch } from "@/lib/recent-searches";
 
 const PROBLEM_TEXT = {
   missing: "مبدا و مقصد مشخص نشده است.",
@@ -27,6 +28,12 @@ export default function Search() {
       ? "جستجوی نامعتبر"
       : `بلیط ${round ? "رفت و برگشت " : ""}هواپیما ${airportShortCity(state.from)} به ${airportShortCity(state.to)}`,
   );
+
+  // Remember the route and dates (not filters) for the landing page's recent searches.
+  const { from, to, date, ret } = state;
+  useEffect(() => {
+    if (!problem) recordSearch({ from, to, date, ret });
+  }, [problem, from, to, date, ret]);
 
   // Filter tweaks replace the history entry so "back" returns to the previous search, not the previous checkbox;
   // choosing flights and switching legs are real steps and push one.

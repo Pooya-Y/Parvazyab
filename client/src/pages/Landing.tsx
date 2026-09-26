@@ -1,5 +1,6 @@
 import { PageShell } from "@/components/layout/PageShell";
 import { SearchWidget } from "@/components/flights/SearchWidget";
+import { RecentSearches } from "@/components/flights/RecentSearches";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
@@ -102,7 +103,8 @@ export default function Landing() {
 
           <div className="mx-auto mt-6 max-w-5xl sm:mt-8">
             <SearchWidget />
-            <div className="mt-5">
+            <div className="mt-5 space-y-5">
+              <RecentSearches />
               <PopularRoutes />
             </div>
           </div>
