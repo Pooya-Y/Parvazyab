@@ -1,0 +1,7 @@
+# Vendored shadcn/ui components keep their upstream style (see CLAUDE.md).
+client/src/components/ui/
+
+# Build output and dependencies.
+dist/
+node_modules/
+package-lock.json
