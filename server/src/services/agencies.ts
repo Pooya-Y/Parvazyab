@@ -58,7 +58,8 @@ export async function listAgencies() {
             (SELECT count(*)::int FROM agency_reviews r WHERE r.agency_id = a.id AND r.status = 'published') AS count,
             (SELECT count(*)::int FROM flight_listings f WHERE f.account_id = a.id AND ${VISIBLE_LISTING_SQL}) AS listings
        FROM agency_profiles p
-       JOIN accounts a ON a.id = p.account_id AND a.role = 'agency'`,
+       JOIN accounts a ON a.id = p.account_id AND a.role = 'agency'
+      WHERE a.suspended_at IS NULL`,
   )) as DirectoryRow[];
   const score = (r: DirectoryRow) =>
     (PRIOR_MEAN * PRIOR_WEIGHT + (r.average ?? 0) * r.count) / (PRIOR_WEIGHT + r.count);
@@ -88,6 +89,10 @@ interface ProfileRow {
   since: Date;
 }
 
+/**
+ * By slug is the public lookup: a suspended agency has no public page (and can't
+ * be reviewed) until restored. By account is the agency's own view.
+ */
 async function profileRow(where: "slug" | "account", value: string): Promise<ProfileRow | null> {
   const [row] = (await AppDataSource.query(
     `SELECT p.account_id AS "accountId", p.slug, COALESCE(NULLIF(a.agency_name, ''), a.name) AS name,
@@ -95,7 +100,7 @@ async function profileRow(where: "slug" | "account", value: string): Promise<Pro
             p.verified_at IS NOT NULL AS verified, a.created_at AS since
        FROM agency_profiles p
        JOIN accounts a ON a.id = p.account_id AND a.role = 'agency'
-      WHERE ${where === "slug" ? "p.slug" : "p.account_id"} = $1`,
+      WHERE ${where === "slug" ? "p.slug = $1 AND a.suspended_at IS NULL" : "p.account_id = $1"}`,
     [value],
   )) as ProfileRow[];
   return row ?? null;

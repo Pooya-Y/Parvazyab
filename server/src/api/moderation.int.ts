@@ -120,7 +120,7 @@ describe("moderation", { skip }, () => {
   });
 
   test("a suspended agency's listings, publishing and API keys all stop; restoring brings them back", async () => {
-    const { account, client } = await agency();
+    const { account, client, slug } = await agency();
     await createListing(account.id, { flightNo: "QB-1" });
     const key = (await client.post<{ key: string }>("/api/dashboard/api-keys", { name: "sync" })).body.key;
 
@@ -143,8 +143,19 @@ describe("moderation", { skip }, () => {
     const viaApi = await new TestClient(server.url).get("/api/v1/listings", { Authorization: `Bearer ${key}` });
     assert.equal(viaApi.status, 403);
 
+    // No public page or directory entry while suspended; the agency still sees its own profile.
+    const visitor = new TestClient(server.url);
+    const listed = async () =>
+      (await visitor.get<{ slug: string }[]>("/api/agencies")).body.some((a) => a.slug === slug);
+    assert.equal((await visitor.get(`/api/agencies/${slug}`)).status, 404);
+    assert.equal((await visitor.get(`/api/agencies/${slug}/reviews`)).status, 404);
+    assert.equal(await listed(), false);
+    assert.equal((await client.get("/api/dashboard/profile")).status, 200);
+
     await admin.put(`/api/admin/users/${account.id}/suspension`, { suspended: false });
     assert.deepEqual(await search(), ["QB-1"]);
+    assert.equal((await visitor.get(`/api/agencies/${slug}`)).status, 200);
+    assert.equal(await listed(), true);
     assert.equal(
       (await new TestClient(server.url).get("/api/v1/listings", { Authorization: `Bearer ${key}` })).status,
       200,
