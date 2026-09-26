@@ -3,6 +3,7 @@ import { requireUser, sessionUser } from "../auth/auth";
 import { config } from "../config/env";
 import { createAlert, deleteAlert, listAlerts, unsubscribeByLink, updateAlert } from "../services/priceAlerts";
 import { listNotifications, markRead, unreadCount } from "../services/notifications";
+import { forbidSuspended } from "../services/moderation";
 import {
   alertPatchSchema,
   alertSchema,
@@ -38,7 +39,7 @@ alertRoutes.get("/", async (_req, res) => {
   res.json(await listAlerts(sessionUser(res).id));
 });
 
-alertRoutes.post("/", async (req, res) => {
+alertRoutes.post("/", forbidSuspended, async (req, res) => {
   res.status(201).json(await createAlert(sessionUser(res), alertSchema.parse(req.body)));
 });
 

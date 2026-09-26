@@ -21,6 +21,9 @@ export interface Account {
   /** Part of every session token; bumping it signs the account out everywhere. */
   sessionVersion: number;
   passwordChangedAt: Date | null;
+  /** Set by an administrator: the account can sign in but not publish, review or create alerts. */
+  suspendedAt: Date | null;
+  suspensionReason: string | null;
   createdAt: Date;
 }
 
@@ -64,6 +67,9 @@ export interface FlightListing {
   priceToman: number;
   bookingUrl: string;
   isActive: boolean;
+  /** Set by an administrator: hidden from travellers whatever the agency does. */
+  suspendedAt: Date | null;
+  suspensionReason: string | null;
 }
 export interface SavedFlight {
   id: string;
@@ -113,6 +119,8 @@ export const AccountEntity = new EntitySchema<Account>({
     emailVerifiedAt: { name: "email_verified_at", type: "timestamptz", nullable: true },
     sessionVersion: { name: "session_version", type: "int", default: 0 },
     passwordChangedAt: { name: "password_changed_at", type: "timestamptz", nullable: true },
+    suspendedAt: { name: "suspended_at", type: "timestamptz", nullable: true },
+    suspensionReason: { name: "suspension_reason", type: "varchar", length: 300, nullable: true },
     createdAt: { name: "created_at", type: "timestamptz", createDate: true },
   },
 });
@@ -168,6 +176,8 @@ export const FlightListingEntity = new EntitySchema<FlightListing>({
     priceToman: { name: "price_toman", type: "bigint", transformer: bigintAsNumber },
     bookingUrl: { name: "booking_url", type: "text" },
     isActive: { name: "is_active", type: "boolean", default: true },
+    suspendedAt: { name: "suspended_at", type: "timestamptz", nullable: true },
+    suspensionReason: { name: "suspension_reason", type: "varchar", length: 300, nullable: true },
   },
   indices: [
     { name: "idx_flight_route", columns: ["originCode", "destinationCode"] },

@@ -10,7 +10,8 @@ import {
   myReview,
   upsertReview,
 } from "../services/agencies";
-import { reviewSchema, reviewsQuerySchema, slugParam } from "./schemas";
+import { forbidSuspended, reportReview } from "../services/moderation";
+import { reportSchema, reviewSchema, reviewsQuerySchema, slugParam, uuidParam } from "./schemas";
 
 /** `/api/agencies`: public agency profiles and their reviews. */
 const router = Router();
@@ -44,9 +45,16 @@ router.get("/:slug/reviews", async (req, res) => {
   res.json({ items, mine });
 });
 
-router.put("/:slug/reviews/mine", requireUser, reviewWriteLimiter, async (req, res) => {
+router.put("/:slug/reviews/mine", requireUser, forbidSuspended, reviewWriteLimiter, async (req, res) => {
   const agencyId = await agencyIdBySlug(slugParam.parse(req.params.slug));
   res.json(await upsertReview(sessionUser(res), agencyId, reviewSchema.parse(req.body)));
+});
+
+/** Brings a review to the administrators' attention. */
+router.post("/:slug/reviews/:id/report", requireUser, reviewWriteLimiter, async (req, res) => {
+  await agencyIdBySlug(slugParam.parse(req.params.slug));
+  await reportReview(sessionUser(res), uuidParam.parse(req.params.id), reportSchema.parse(req.body ?? {}).reason);
+  res.status(202).json({ ok: true });
 });
 
 router.delete("/:slug/reviews/mine", requireUser, async (req, res) => {

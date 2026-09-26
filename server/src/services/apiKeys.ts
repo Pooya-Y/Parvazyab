@@ -113,6 +113,7 @@ export async function requireApiKey(req: Request, res: Response, next: NextFunct
   const account: Account | null = await accounts().findOne({ where: { id: row.accountId } });
   // A key outlives nothing: an account that is no longer an agency can't use its old keys.
   if (!account || account.role !== "agency") throw new HttpError(403, "FORBIDDEN");
+  if (account.suspendedAt) throw new HttpError(403, "ACCOUNT_SUSPENDED");
   res.locals.user = account;
   res.locals.apiKeyPrefix = prefix;
   touch(row.id);

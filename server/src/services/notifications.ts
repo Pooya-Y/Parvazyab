@@ -7,7 +7,8 @@ import { appLink, notificationMail } from "../notify/templates";
 import { config } from "../config/env";
 import { unsubscribeSignature } from "./alertLinks";
 
-export type NotificationKind = "price_drop";
+/** price_drop: an alert fired; moderation: an administrator acted on the account, a listing or a request. */
+export type NotificationKind = "price_drop" | "moderation";
 
 export interface NewNotification {
   kind: NotificationKind;

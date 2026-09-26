@@ -19,6 +19,16 @@ export const AUDIT_ACTIONS = [
   "api_key.revoked",
   "listing.imported",
   "admin.role_changed",
+  "admin.account_suspended",
+  "admin.account_restored",
+  "admin.listing_suspended",
+  "admin.listing_restored",
+  "admin.agency_verified",
+  "admin.agency_unverified",
+  "admin.review_hidden",
+  "admin.review_restored",
+  "admin.reports_dismissed",
+  "agency.verification_requested",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

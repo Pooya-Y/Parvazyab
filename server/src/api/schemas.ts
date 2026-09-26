@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AUDIT_ACTIONS } from "../services/audit";
 import { isKnownAirport } from "../domain/airports";
 import { latinDigits, normalizeIranMobile } from "../domain/phone";
 import { addDaysToDateKey, isValidDateKey, tehranTodayKey } from "../domain/time";
@@ -303,3 +304,29 @@ export const reviewsQuerySchema = z.object({
 });
 
 export const slugParam = z.string().trim().toLowerCase().max(40);
+
+// ---------------------------------------------------------------------------
+// Moderation
+// ---------------------------------------------------------------------------
+
+const moderationNote = z
+  .string()
+  .trim()
+  .max(300)
+  .transform((v) => (v === "" ? null : v))
+  .nullable()
+  .default(null);
+
+export const suspensionSchema = z.object({ suspended: z.boolean(), reason: moderationNote });
+export const verificationDecisionSchema = z.object({ verified: z.boolean(), note: moderationNote });
+export const reviewStatusSchema = z.object({ status: z.enum(["published", "hidden"]) });
+export const reportSchema = z.object({ reason: z.string().trim().max(300).default("") });
+export const adminListingsQuerySchema = z.object({
+  q: z.string().trim().max(60).default(""),
+  status: z.enum(["all", "suspended"]).default("all"),
+});
+export const auditQuerySchema = z.object({
+  action: z.enum(AUDIT_ACTIONS).optional(),
+  before: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});

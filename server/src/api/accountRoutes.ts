@@ -4,6 +4,18 @@ import { accounts } from "../database/dataSource";
 import { requireRole, requireUser, sanitizeUser, sessionUser } from "../auth/auth";
 import { audit } from "../services/audit";
 import { clickStats } from "../services/clicks";
+import {
+  auditEntries,
+  dismissReports,
+  findListingsForAdmin,
+  forbidSuspended,
+  moderationQueue,
+  requestVerification,
+  setAccountSuspension,
+  setAgencyVerification,
+  setListingSuspension,
+  setReviewStatus,
+} from "../services/moderation";
 import { ownProfile, replyToReview, reviewsForAgency, updateAgencyProfile } from "../services/agencies";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/apiKeys";
 import { csvToRows, listingsCsv, planImport, templateCsv } from "../services/listingImport";
@@ -25,15 +37,20 @@ import {
   upsertListing,
 } from "../services/accountService";
 import {
+  adminListingsQuerySchema,
   agencyProfileSchema,
+  auditQuerySchema,
   becomeAgencySchema,
   clickStatsQuerySchema,
   listingSchema,
   listingStatusSchema,
   replySchema,
+  reviewStatusSchema,
   savedFlightSnapshotSchema,
   setRoleSchema,
+  suspensionSchema,
   uuidParam,
+  verificationDecisionSchema,
 } from "./schemas";
 
 const flightKeyParam = z.string().min(1).max(255);
@@ -112,6 +129,7 @@ const importQuery = z.object({
 dashboardRoutes.post(
   "/listings/import",
   agencyOnly,
+  forbidSuspended,
   express.text({ type: ["text/csv", "text/plain", "application/csv"], limit: "2mb" }),
   async (req, res) => {
     if (typeof req.body !== "string") throw new HttpError(415, "UNSUPPORTED_MEDIA_TYPE");
@@ -138,7 +156,7 @@ dashboardRoutes.get("/profile", agencyOnly, async (_req, res) => {
   res.json(await ownProfile(sessionUser(res).id));
 });
 
-dashboardRoutes.put("/profile", agencyOnly, async (req, res) => {
+dashboardRoutes.put("/profile", agencyOnly, forbidSuspended, async (req, res) => {
   res.json(await updateAgencyProfile(sessionUser(res).id, agencyProfileSchema.parse(req.body)));
 });
 
@@ -148,17 +166,23 @@ dashboardRoutes.get("/reviews", agencyOnly, async (_req, res) => {
 });
 
 /** The agency's public answer to one of its reviews; an empty reply removes it. */
-dashboardRoutes.put("/reviews/:id/reply", agencyOnly, async (req, res) => {
+dashboardRoutes.put("/reviews/:id/reply", agencyOnly, forbidSuspended, async (req, res) => {
   const { reply } = replySchema.parse(req.body);
   await replyToReview(sessionUser(res).id, uuidParam.parse(req.params.id), reply);
   res.json({ ok: true });
+});
+
+/** Asks the administrators for the verified badge. */
+dashboardRoutes.post("/profile/verification", agencyOnly, forbidSuspended, async (req, res) => {
+  await requestVerification(sessionUser(res).id, req);
+  res.status(202).json({ ok: true });
 });
 
 dashboardRoutes.get("/api-keys", agencyOnly, async (_req, res) => {
   res.json(await listApiKeys(sessionUser(res).id));
 });
 
-dashboardRoutes.post("/api-keys", agencyOnly, async (req, res) => {
+dashboardRoutes.post("/api-keys", agencyOnly, forbidSuspended, async (req, res) => {
   const { name } = z.object({ name: z.string().trim().min(1).max(60) }).parse(req.body);
   const user = sessionUser(res);
   const key = await createApiKey(user.id, name);
@@ -186,12 +210,12 @@ dashboardRoutes.get("/listings", agencyOnly, async (_req, res) => {
   res.json(await listListings(sessionUser(res).id));
 });
 
-dashboardRoutes.post("/listings", agencyOnly, async (req, res) => {
+dashboardRoutes.post("/listings", agencyOnly, forbidSuspended, async (req, res) => {
   const { id, created } = await upsertListing(sessionUser(res).id, listingSchema.parse(req.body));
   res.status(created ? 201 : 200).json({ id });
 });
 
-dashboardRoutes.patch("/listings/:id/status", agencyOnly, async (req, res) => {
+dashboardRoutes.patch("/listings/:id/status", agencyOnly, forbidSuspended, async (req, res) => {
   const { isActive } = listingStatusSchema.parse(req.body);
   await setListingActive(sessionUser(res).id, uuidParam.parse(req.params.id), isActive);
   res.json({ ok: true });
@@ -248,4 +272,49 @@ adminRoutes.patch("/users/:id/role", async (req, res) => {
     });
   }
   res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Moderation
+// ---------------------------------------------------------------------------
+
+/** Verification requests and reported reviews, plus counts of what is currently hidden. */
+adminRoutes.get("/moderation", async (_req, res) => {
+  res.json(await moderationQueue());
+});
+
+adminRoutes.put("/users/:id/suspension", async (req, res) => {
+  await setAccountSuspension(sessionUser(res), uuidParam.parse(req.params.id), suspensionSchema.parse(req.body), req);
+  res.json({ ok: true });
+});
+
+adminRoutes.get("/listings", async (req, res) => {
+  res.json(await findListingsForAdmin(adminListingsQuerySchema.parse(req.query)));
+});
+
+adminRoutes.put("/listings/:id/suspension", async (req, res) => {
+  await setListingSuspension(sessionUser(res), uuidParam.parse(req.params.id), suspensionSchema.parse(req.body), req);
+  res.json({ ok: true });
+});
+
+adminRoutes.put("/agencies/:id/verification", async (req, res) => {
+  const decision = verificationDecisionSchema.parse(req.body);
+  await setAgencyVerification(sessionUser(res), uuidParam.parse(req.params.id), decision, req);
+  res.json({ ok: true });
+});
+
+adminRoutes.put("/reviews/:id/status", async (req, res) => {
+  const { status } = reviewStatusSchema.parse(req.body);
+  await setReviewStatus(sessionUser(res), uuidParam.parse(req.params.id), status, req);
+  res.json({ ok: true });
+});
+
+/** The reports were unfounded: close them without hiding the review. */
+adminRoutes.post("/reviews/:id/dismiss-reports", async (req, res) => {
+  await dismissReports(sessionUser(res), uuidParam.parse(req.params.id), req);
+  res.json({ ok: true });
+});
+
+adminRoutes.get("/audit", async (req, res) => {
+  res.json(await auditEntries(auditQuerySchema.parse(req.query)));
 });

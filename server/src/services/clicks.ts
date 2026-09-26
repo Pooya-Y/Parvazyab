@@ -4,6 +4,7 @@ import { AppDataSource, flightListings } from "../database/dataSource";
 import type { FlightListing } from "../database/entities";
 import { config } from "../config/env";
 import { TEHRAN_OFFSET_MINUTES, addDaysToDateKey, tehranTodayKey } from "../domain/time";
+import { VISIBLE_LISTING_SQL } from "./visibility";
 
 /** Where on the site a "buy" click came from. */
 export const CLICK_SOURCES = ["search", "detail", "roundtrip", "other"] as const;
@@ -40,7 +41,11 @@ export type OutboundTarget = { kind: "agency"; url: string; listing: FlightListi
 export async function outboundTarget(listingId: string): Promise<OutboundTarget> {
   const listing = await flightListings().findOne({ where: { id: listingId } });
   if (!listing) return { kind: "app", path: "/" };
-  const visible = listing.isActive && listing.departAt.getTime() > Date.now();
+  // The same rule as search: a suspended listing (or agency) can't be bought through here either.
+  const [{ visible }] = (await AppDataSource.query(
+    `SELECT EXISTS (SELECT 1 FROM flight_listings f WHERE f.id = $1 AND ${VISIBLE_LISTING_SQL}) AS visible`,
+    [listing.id],
+  )) as { visible: boolean }[];
   if (visible && isHttpUrl(listing.bookingUrl)) return { kind: "agency", url: listing.bookingUrl, listing };
   const params = new URLSearchParams({ from: listing.originCode, to: listing.destinationCode });
   return { kind: "app", path: `/search?${params.toString()}` };
