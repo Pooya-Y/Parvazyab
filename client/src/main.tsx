@@ -9,6 +9,9 @@ import { RequireAuth, RequireRole } from "@/components/RequireAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
+import { initPwa } from "@/lib/pwa";
+
+initPwa();
 
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
