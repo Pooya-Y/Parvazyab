@@ -4,12 +4,16 @@ import { Download } from "lucide-react";
 import { useInstallPrompt } from "@/hooks/use-pwa";
 import { jalaliFromKey, todayKey, toFaDigits } from "@/lib/persian";
 
-const LINKS = [
+const LINKS: { to: string; label: string; serverPage?: boolean }[] = [
   { to: "/", label: "جستجوی پرواز" },
   { to: "/explore", label: "ارزان‌ترین مقصدها" },
+  // Rendered by the server for search engines: a full page load, not an in-app route.
+  { to: "/flights", label: "همهٔ مسیرها", serverPage: true },
   { to: "/dashboard/saved", label: "پروازهای ذخیره‌شده" },
   { to: "/auth", label: "ورود آژانس‌ها" },
 ];
+
+const LINK_CLASS = "inline-block py-1 text-muted-foreground transition-colors hover:text-foreground";
 
 export function Footer() {
   const jalaliYear = jalaliFromKey(todayKey())?.jy;
@@ -39,12 +43,15 @@ export function Footer() {
           <ul className="space-y-1 text-sm">
             {LINKS.map((l) => (
               <li key={l.to}>
-                <Link
-                  to={l.to}
-                  className="inline-block py-1 text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {l.label}
-                </Link>
+                {l.serverPage ? (
+                  <a href={l.to} className={LINK_CLASS}>
+                    {l.label}
+                  </a>
+                ) : (
+                  <Link to={l.to} className={LINK_CLASS}>
+                    {l.label}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
