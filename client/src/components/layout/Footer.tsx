@@ -4,6 +4,7 @@ import { jalaliFromKey, todayKey, toFaDigits } from "@/lib/persian";
 
 const LINKS = [
   { to: "/", label: "جستجوی پرواز" },
+  { to: "/explore", label: "ارزان‌ترین مقصدها" },
   { to: "/dashboard?tab=saved", label: "پروازهای ذخیره‌شده" },
   { to: "/auth", label: "ورود آژانس‌ها" },
 ];

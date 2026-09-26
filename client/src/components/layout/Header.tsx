@@ -104,6 +104,9 @@ export function Header() {
             <Button variant="ghost" size="sm" asChild>
               <Link to="/">جستجوی پرواز</Link>
             </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/explore">مقصدهای ارزان</Link>
+            </Button>
             {isAuthenticated && (
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/dashboard?tab=saved">ذخیره‌شده‌ها</Link>

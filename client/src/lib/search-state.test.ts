@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { airportDistinctName } from "@/domain/airports";
 import {
   CLEARED_FILTERS,
   activeFilterCount,
@@ -155,5 +156,13 @@ describe("round trips", () => {
     expect(parseSearchState(toSearchParams(state)).state).toEqual(state);
     expect(activeFilterCount(legFilters(state, "ret"))).toBe(2);
     expect(activeFilterCount(legFilters(state, "out"))).toBe(0);
+  });
+});
+
+describe("airport names", () => {
+  it("disambiguates airports that share a city", () => {
+    expect(airportDistinctName("THR")).toBe("مهرآباد");
+    expect(airportDistinctName("IKA")).toBe("امام خمینی");
+    expect(airportDistinctName("MHD")).toBe("مشهد");
   });
 });

@@ -16,6 +16,7 @@ const Search = lazy(() => import("./pages/Search.tsx"));
 const FlightDetail = lazy(() => import("./pages/FlightDetail.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const Explore = lazy(() => import("./pages/Explore.tsx"));
 
 function RouteLoading() {
   return (
@@ -47,6 +48,7 @@ createRoot(document.getElementById("root")!).render(
                 <Routes>
                   <Route path="/" element={<Landing />} />
                   <Route path="/search" element={<Search />} />
+                  <Route path="/explore" element={<Explore />} />
                   <Route path="/flight/:id" element={<FlightDetail />} />
                   <Route path="/auth" element={<AuthPage />} />
                   <Route

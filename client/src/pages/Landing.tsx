@@ -1,16 +1,19 @@
 import { PageShell } from "@/components/layout/PageShell";
 import { SearchWidget } from "@/components/flights/SearchWidget";
+import { DestinationList, DestinationListSkeleton } from "@/components/explore/DestinationList";
+import { Segmented } from "@/components/Segmented";
 import { RecentSearches } from "@/components/flights/RecentSearches";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { useApiQuery } from "@/lib/use-api-query";
-import { airportShortCity } from "@/domain/airports";
+import { airportDistinctName, airportShortCity } from "@/domain/airports";
 import { searchUrl } from "@/lib/search-state";
 import { toFaDigits } from "@/lib/persian";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { ArrowLeft, BadgeCheck, Filter, Heart, LineChart, Store, TrendingDown } from "lucide-react";
 import { Link } from "react-router";
+import { useState } from "react";
 
 function PopularRoutes() {
   const { data: routes, isLoading } = useApiQuery("popular-routes", (signal) => api.popularRoutes(signal));
@@ -43,6 +46,52 @@ function PopularRoutes() {
         </Link>
       ))}
     </nav>
+  );
+}
+
+const TEASER_ORIGINS = ["THR", "IKA", "MHD", "SYZ"];
+
+/** Top five cheapest destinations from a few big airports, linking to the full explore page. */
+function CheapDestinations() {
+  const [origin, setOrigin] = useState("THR");
+  const query = useApiQuery(`explore:${origin}:30:all`, (signal) => api.explore(origin, 30, "all", signal));
+  const top = query.data?.destinations.slice(0, 5) ?? [];
+
+  return (
+    <section className="container-page py-12 sm:py-16" aria-labelledby="cheap-heading">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="cheap-heading" className="text-xl font-bold sm:text-2xl">
+            ارزان‌ترین مقصدها در ۳۰ روز آینده
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">کمترین قیمت بلیط اکونومی به هر مقصد</p>
+        </div>
+        <Segmented
+          legend="مبدا"
+          options={TEASER_ORIGINS.map((code) => ({ value: code, label: `از ${airportDistinctName(code)}` }))}
+          value={origin}
+          onChange={setOrigin}
+          className="max-w-full overflow-x-auto"
+        />
+      </div>
+      <div className="mt-5">
+        {query.error && !query.data ? (
+          <p className="text-sm text-muted-foreground">فهرست مقصدها الان در دسترس نیست.</p>
+        ) : query.isLoading ? (
+          <DestinationListSkeleton rows={5} />
+        ) : top.length ? (
+          <DestinationList originCode={origin} destinations={top} compact fetching={query.isFetching} />
+        ) : (
+          <p className="text-sm text-muted-foreground">فعلاً پروازی از {airportDistinctName(origin)} ثبت نشده است.</p>
+        )}
+      </div>
+      <Button asChild variant="outline" className="mt-4">
+        <Link to={`/explore?from=${origin}`}>
+          همه مقصدها از {airportDistinctName(origin)}
+          <ArrowLeft aria-hidden />
+        </Link>
+      </Button>
+    </section>
   );
 }
 
@@ -110,6 +159,8 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      <CheapDestinations />
 
       <section className="container-page py-12 sm:py-16" aria-labelledby="how-heading">
         <h2 id="how-heading" className="text-center text-xl font-bold sm:text-2xl">

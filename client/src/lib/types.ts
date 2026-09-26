@@ -88,6 +88,25 @@ export interface PriceHistory {
   } | null;
 }
 
+export type ExploreScope = "all" | "domestic" | "international";
+
+export interface ExploreDestination {
+  code: string;
+  city: string;
+  isInternational: boolean;
+  minPrice: number;
+  cheapestDate: string;
+  flights: number;
+  airlines: string[];
+}
+
+export interface ExploreResult {
+  originCode: string;
+  days: number;
+  scope: ExploreScope;
+  destinations: ExploreDestination[];
+}
+
 export type SortMode = "best" | "cheapest" | "fastest" | "departure" | "arrival";
 
 export interface SearchParams {

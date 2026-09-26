@@ -86,3 +86,11 @@ export function airportCity(code: string): string {
 export function airportShortCity(code: string): string {
   return airportCity(code).replace(/\s*\(.*\)$/, "");
 }
+
+/**
+ * Shortest unambiguous name: the airport's own name where a city has several
+ * ("تهران (مهرآباد)" → "مهرآباد"), otherwise the city.
+ */
+export function airportDistinctName(code: string): string {
+  return /\(([^)]+)\)$/.exec(airportCity(code))?.[1] ?? airportCity(code);
+}
