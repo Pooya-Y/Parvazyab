@@ -1,4 +1,5 @@
 import { accounts, flightListings, savedFlights, isUniqueViolation } from "../database/dataSource";
+import { ensureAgencyProfile } from "./agencies";
 import type { Account, FlightListing, SavedFlight } from "../database/entities";
 import { findAirport } from "../domain/airports";
 import { resolveCanonicalAirlineName } from "../domain/airlineRegistry";
@@ -168,6 +169,7 @@ export async function agencyStats(accountId: string) {
 export async function becomeAgency(user: Account, agencyName: string): Promise<boolean> {
   if (user.role !== "user") return false;
   await accounts().update({ id: user.id }, { role: "agency", agencyName });
+  await ensureAgencyProfile(user.id);
   return true;
 }
 
@@ -227,5 +229,6 @@ export async function setAccountRole(actor: Account, targetId: string, role: "us
   if (!target) throw notFound();
   if (target.role === "admin") throw new HttpError(403, "CANNOT_CHANGE_ADMIN");
   await accounts().update({ id: targetId }, { role });
+  if (role === "agency") await ensureAgencyProfile(targetId);
   return target.role;
 }

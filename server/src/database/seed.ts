@@ -5,6 +5,8 @@ import { resolveCanonicalAirlineName } from "../domain/airlineRegistry";
 import { findAirport } from "../domain/airports";
 import { DEMO_WINDOW_DAYS, buildDemoHistory, buildDemoSchedule, demoRoutes } from "./demoSchedule";
 import { tehranTodayKey } from "../domain/time";
+import { randomUUID } from "node:crypto";
+import { ensureAgencyProfile } from "../services/agencies";
 
 const DEMO_PASSWORD = "Demo1234!";
 
@@ -66,6 +68,103 @@ export async function seedDemoData(now = Date.now()) {
   if (history) console.log(`Seeded ${history} demo price-history days`);
   const clicks = await backfillDemoClicks(agencyIds);
   if (clicks) console.log(`Seeded ${clicks} demo outbound clicks`);
+  const reviews = await ensureDemoProfiles(agencyIds);
+  if (reviews) console.log(`Seeded ${reviews} demo agency reviews`);
+}
+
+const DEMO_PROFILES = [
+  {
+    slug: "skybazaar",
+    city: "تهران",
+    website: "https://skybazaar.example",
+    supportPhone: "021-91001234",
+    licenseNo: "بند ب-۱۲۳۴",
+    verified: true,
+    description:
+      "فروش بلیط پروازهای داخلی و خارجی از سال ۱۳۹۲. پشتیبانی تلفنی شبانه‌روزی و استرداد آنلاین برای پروازهای سیستمی.",
+    ratings: [5, 5, 4, 5, 4, 5, 5, 4],
+  },
+  {
+    slug: "parvazino",
+    city: "مشهد",
+    website: "https://parvazino.example",
+    supportPhone: "051-38001234",
+    licenseNo: "بند ب-۵۶۷۸",
+    verified: true,
+    description: "تخصص ما پروازهای چارتری مشهد و کیش است؛ قیمت‌ها هر روز به‌روز می‌شوند.",
+    ratings: [4, 5, 3, 4, 4, 5],
+  },
+  {
+    slug: "hamsafar",
+    city: "شیراز",
+    website: null,
+    supportPhone: "071-32001234",
+    licenseNo: null,
+    verified: false,
+    description: "آژانس مسافرتی همسفر، فروش بلیط هواپیما و تور.",
+    ratings: [4, 3, 2, 4, 3],
+  },
+];
+
+const DEMO_REVIEW_TEXTS: Record<number, string[]> = {
+  5: ["خرید سریع بود و بلیط همان لحظه صادر شد.", "پشتیبانی عالی؛ تغییر تاریخ را بدون دردسر انجام دادند.", ""],
+  4: ["قیمت خوبی داشت، فقط صدور بلیط کمی طول کشید.", "راضی بودم، دفعهٔ بعد هم از همین‌جا می‌خرم.", ""],
+  3: ["بد نبود ولی جواب تلفن دیر داده شد.", ""],
+  2: ["قیمت نهایی از قیمت اعلام‌شده بیشتر بود.", "استرداد بیش از یک هفته طول کشید."],
+};
+
+const DEMO_REVIEWER_NAMES = [
+  "سارا کاظمی",
+  "علی رضایی",
+  "مریم احمدی",
+  "رضا موسوی",
+  "نگار حسینی",
+  "حمید کریمی",
+  "لیلا جعفری",
+  "امیر صادقی",
+];
+
+/**
+ * Profiles for the demo agencies (only while they still have their placeholder
+ * address) and a few reviews from demo travellers (only for agencies without
+ * any). Returns the number of reviews added.
+ */
+async function ensureDemoProfiles(agencyIds: string[]): Promise<number> {
+  const reviewerIds: string[] = [];
+  for (const [i, name] of DEMO_REVIEWER_NAMES.entries()) {
+    // Throwaway passwords: these accounts only exist to author demo reviews.
+    const reviewer = await ensureAccount(`reviewer${i + 1}@example.com`, { name, role: "user" }, randomUUID());
+    reviewerIds.push(reviewer.id);
+  }
+  let added = 0;
+  for (const [i, agencyId] of agencyIds.entries()) {
+    const p = DEMO_PROFILES[i];
+    if (!p) continue;
+    await ensureAgencyProfile(agencyId);
+    await AppDataSource.query(
+      `UPDATE agency_profiles
+          SET slug = $2, description = $3, website = $4, support_phone = $5, city = $6, license_no = $7,
+              verified_at = CASE WHEN $8 THEN now() ELSE NULL END
+        WHERE account_id = $1 AND slug LIKE 'agency-%'`,
+      [agencyId, p.slug, p.description, p.website, p.supportPhone, p.city, p.licenseNo, p.verified],
+    );
+    const [{ any }] = (await AppDataSource.query(
+      `SELECT EXISTS (SELECT 1 FROM agency_reviews WHERE agency_id = $1) AS any`,
+      [agencyId],
+    )) as { any: boolean }[];
+    if (any) continue;
+    for (const [j, rating] of p.ratings.entries()) {
+      const texts = DEMO_REVIEW_TEXTS[rating] ?? [""];
+      await AppDataSource.query(
+        `INSERT INTO agency_reviews (agency_id, author_id, rating, body, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, now() - make_interval(days => $5), now() - make_interval(days => $5))
+         ON CONFLICT DO NOTHING`,
+        [agencyId, reviewerIds[j % reviewerIds.length], rating, texts[j % texts.length], 3 + j * 6],
+      );
+      added++;
+    }
+  }
+  return added;
 }
 
 /**

@@ -4,6 +4,7 @@ import { accounts } from "../database/dataSource";
 import { requireRole, requireUser, sanitizeUser, sessionUser } from "../auth/auth";
 import { audit } from "../services/audit";
 import { clickStats } from "../services/clicks";
+import { ownProfile, replyToReview, reviewsForAgency, updateAgencyProfile } from "../services/agencies";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/apiKeys";
 import { csvToRows, listingsCsv, planImport, templateCsv } from "../services/listingImport";
 import { tehranTodayKey } from "../domain/time";
@@ -24,10 +25,12 @@ import {
   upsertListing,
 } from "../services/accountService";
 import {
+  agencyProfileSchema,
   becomeAgencySchema,
   clickStatsQuerySchema,
   listingSchema,
   listingStatusSchema,
+  replySchema,
   savedFlightSnapshotSchema,
   setRoleSchema,
   uuidParam,
@@ -130,6 +133,26 @@ dashboardRoutes.post(
     }
   },
 );
+
+dashboardRoutes.get("/profile", agencyOnly, async (_req, res) => {
+  res.json(await ownProfile(sessionUser(res).id));
+});
+
+dashboardRoutes.put("/profile", agencyOnly, async (req, res) => {
+  res.json(await updateAgencyProfile(sessionUser(res).id, agencyProfileSchema.parse(req.body)));
+});
+
+/** Every review of the agency, hidden ones flagged. */
+dashboardRoutes.get("/reviews", agencyOnly, async (_req, res) => {
+  res.json(await reviewsForAgency(sessionUser(res).id));
+});
+
+/** The agency's public answer to one of its reviews; an empty reply removes it. */
+dashboardRoutes.put("/reviews/:id/reply", agencyOnly, async (req, res) => {
+  const { reply } = replySchema.parse(req.body);
+  await replyToReview(sessionUser(res).id, uuidParam.parse(req.params.id), reply);
+  res.json({ ok: true });
+});
 
 dashboardRoutes.get("/api-keys", agencyOnly, async (_req, res) => {
   res.json(await listApiKeys(sessionUser(res).id));

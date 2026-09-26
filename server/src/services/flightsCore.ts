@@ -22,9 +22,18 @@ export interface Listing {
   bookingUrl: string;
   isActive: boolean;
   agencyName: string;
+  /** Public profile address, verification and rating, when known. */
+  agencySlug?: string | null;
+  agencyVerified?: boolean;
+  agencyRating?: AgencyRating | null;
 }
 
 export type Cabin = "economy" | "business";
+
+export interface AgencyRating {
+  average: number;
+  count: number;
+}
 export type FareType = "scheduled" | "charter";
 
 /** One agency's price for a flight (a single listing). */
@@ -36,6 +45,9 @@ export interface FlightOffer {
   fareType: FareType;
   priceToman: number;
   bookingUrl: string;
+  agencySlug?: string | null;
+  agencyVerified?: boolean;
+  agencyRating?: AgencyRating | null;
 }
 
 /** One real-world flight, possibly sold by several agencies. */
@@ -136,6 +148,13 @@ function buildFlightFromOffers(listings: Listing[]): FlightCard {
       fareType: l.fareType,
       priceToman: l.priceToman,
       bookingUrl: l.bookingUrl,
+      ...(l.agencySlug === undefined
+        ? {}
+        : {
+            agencySlug: l.agencySlug,
+            agencyVerified: l.agencyVerified ?? false,
+            agencyRating: l.agencyRating ?? null,
+          }),
     })),
   );
 }

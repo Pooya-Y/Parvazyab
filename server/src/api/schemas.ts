@@ -249,3 +249,57 @@ export const clickStatsQuerySchema = z.object({
     .refine((d) => (CLICK_PERIODS as readonly number[]).includes(d), { message: "INVALID_PERIOD" })
     .default(30),
 });
+
+// ---------------------------------------------------------------------------
+// Agency profiles and reviews
+// ---------------------------------------------------------------------------
+
+/** Empty text fields mean "not set". */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .default(null);
+
+export const agencyProfileSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(40)
+    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "INVALID_SLUG"),
+  description: z.string().trim().max(1200).default(""),
+  website: z
+    .union([httpUrl, z.literal("")])
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .default(null),
+  supportPhone: z
+    .string()
+    .trim()
+    .transform(latinDigits)
+    .pipe(z.string().regex(/^[0-9+\-\s()]{0,20}$/, "INVALID_PHONE"))
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .default(null),
+  city: optionalText(60),
+  licenseNo: optionalText(40),
+});
+
+export const reviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  body: z.string().trim().max(1000).default(""),
+});
+
+export const replySchema = z.object({ reply: z.string().trim().max(1000) });
+
+export const reviewsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+  before: z.coerce.number().int().positive().optional(),
+});
+
+export const slugParam = z.string().trim().toLowerCase().max(40);

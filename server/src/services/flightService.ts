@@ -14,6 +14,7 @@ import {
   type SearchFilters,
 } from "./flightsCore";
 import { whereVisible } from "./visibility";
+import { agencyDirectory } from "./agencyDirectory";
 import { resolveCanonicalAirlineName } from "../domain/airlineRegistry";
 import { tehranDayBounds } from "../domain/time";
 import type { SearchQuery } from "../api/schemas";
@@ -55,6 +56,7 @@ export function loadRouteFlights(originCode: string, destinationCode: string, da
       ? await accounts().find({ where: { id: In(accountIds) }, select: { id: true, name: true, agencyName: true } })
       : [];
     const agencyNames = new Map(owners.map((a) => [a.id, a.agencyName || a.name || FALLBACK_AGENCY_NAME]));
+    const directory = await agencyDirectory(accountIds);
 
     const listings: Listing[] = rows.map((r) => ({
       ...r,
@@ -62,6 +64,9 @@ export function loadRouteFlights(originCode: string, destinationCode: string, da
       arriveAt: r.arriveAt.getTime(),
       airline: resolveCanonicalAirlineName(r.airline),
       agencyName: agencyNames.get(r.accountId) ?? FALLBACK_AGENCY_NAME,
+      agencySlug: directory.get(r.accountId)?.slug ?? null,
+      agencyVerified: directory.get(r.accountId)?.verified ?? false,
+      agencyRating: directory.get(r.accountId)?.rating ?? null,
     }));
     return groupOffersByFlight(listings);
   });
