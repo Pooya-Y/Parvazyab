@@ -9,7 +9,9 @@
     "start": "node dist/server.js",
     "seed": "tsx src/database/seed.ts",
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "test:int": "tsx --test --test-concurrency=1 \"src/**/*.int.ts\""
+    "test:int": "tsx --test --test-concurrency=1 \"src/**/*.int.ts\"",
+    "dev:worker": "tsx watch src/worker.ts",
+    "start:worker": "node dist/worker.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
