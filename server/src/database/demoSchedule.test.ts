@@ -21,7 +21,8 @@ test("only future departures inside the window", () => {
   const todayKey = new Date(NOW + TEHRAN_OFFSET_MS).toISOString().slice(0, 10);
   assert.ok(
     !specs.some(
-      (s) => s.flightNo === "W5-101" && new Date(s.departAt.getTime() + TEHRAN_OFFSET_MS).toISOString().startsWith(todayKey),
+      (s) =>
+        s.flightNo === "W5-101" && new Date(s.departAt.getTime() + TEHRAN_OFFSET_MS).toISOString().startsWith(todayKey),
     ),
   );
 });

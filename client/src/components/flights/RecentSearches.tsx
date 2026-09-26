@@ -45,7 +45,10 @@ export function RecentSearches() {
           const { href, when } = describe(s, today);
           const route = `${airportShortCity(s.from)} به ${airportShortCity(s.to)}`;
           return (
-            <li key={`${s.from}-${s.to}-${s.date ?? ""}-${s.ret ?? ""}`} className="flex shrink-0 rounded-md border bg-card">
+            <li
+              key={`${s.from}-${s.to}-${s.date ?? ""}-${s.ret ?? ""}`}
+              className="flex shrink-0 rounded-md border bg-card"
+            >
               <Link to={href} className="flex flex-col px-3 py-1.5 hover:bg-accent">
                 <span className="text-sm font-medium whitespace-nowrap">
                   {route}

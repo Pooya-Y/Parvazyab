@@ -24,7 +24,10 @@ interface Card {
 /** Epoch ms of a Tehran wall-clock time `days` days from today (Tehran). */
 function tehranTime(days: number, hour: number, minute = 0) {
   const shifted = new Date(Date.now() + TEHRAN_OFFSET_MS);
-  return Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate() + days, hour, minute) - TEHRAN_OFFSET_MS;
+  return (
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate() + days, hour, minute) -
+    TEHRAN_OFFSET_MS
+  );
 }
 const dateKeyOf = (epoch: number) => new Date(epoch + TEHRAN_OFFSET_MS).toISOString().slice(0, 10);
 

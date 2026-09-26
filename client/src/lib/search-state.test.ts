@@ -79,7 +79,10 @@ describe("search URL state", () => {
       arriveToHour: 23,
     });
     expect(activeFilterCount(state)).toBe(3);
-    expect(parse("from=IKA&to=IST&cabin=first&arrive=noon").state).toMatchObject({ cabin: undefined, arrive: undefined });
+    expect(parse("from=IKA&to=IST&cabin=first&arrive=noon").state).toMatchObject({
+      cabin: undefined,
+      arrive: undefined,
+    });
   });
 
   it("CLEARED_FILTERS resets every filter when merged into URL state", () => {
@@ -113,7 +116,8 @@ describe("round trips", () => {
 
   it("ignores round-trip params on one-way searches", () => {
     const { state } = parse("from=THR&to=MHD&date=2030-01-02&ob=x&rb=y&leg=ret&rtime=early");
-    for (const key of ["ret", "outboundId", "returnId", "leg", "returnTime"] as const) expect(state[key]).toBeUndefined();
+    for (const key of ["ret", "outboundId", "returnId", "leg", "returnTime"] as const)
+      expect(state[key]).toBeUndefined();
     expect(toSearchParams(state).toString()).toBe("from=THR&to=MHD&date=2030-01-02");
   });
 

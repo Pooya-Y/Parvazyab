@@ -33,13 +33,41 @@ describe("explore API", { skip }, () => {
     const w5 = hoursFromNow(30);
     await createListing(a.id, { destinationCode: "MHD", flightNo: "W5-1", departAt: w5, priceToman: 2_400_000 });
     await createListing(b.id, { destinationCode: "MHD", flightNo: "W5-1", departAt: w5, priceToman: 2_300_000 });
-    await createListing(a.id, { destinationCode: "MHD", flightNo: "IR-1", departAt: hoursFromNow(40), priceToman: 2_900_000 });
+    await createListing(a.id, {
+      destinationCode: "MHD",
+      flightNo: "IR-1",
+      departAt: hoursFromNow(40),
+      priceToman: 2_900_000,
+    });
     // KIH is cheapest; its business fare and a flight beyond the window must not count.
-    await createListing(a.id, { destinationCode: "KIH", destinationCity: "کیش", flightNo: "Y9-1", departAt: cheapKih, priceToman: 1_900_000 });
-    await createListing(a.id, { destinationCode: "KIH", flightNo: "Y9-2", departAt: hoursFromNow(60), cabin: "business", priceToman: 900_000 });
-    await createListing(a.id, { destinationCode: "KIH", flightNo: "Y9-3", departAt: hoursFromNow(24 * 20), priceToman: 1_000_000 });
+    await createListing(a.id, {
+      destinationCode: "KIH",
+      destinationCity: "کیش",
+      flightNo: "Y9-1",
+      departAt: cheapKih,
+      priceToman: 1_900_000,
+    });
+    await createListing(a.id, {
+      destinationCode: "KIH",
+      flightNo: "Y9-2",
+      departAt: hoursFromNow(60),
+      cabin: "business",
+      priceToman: 900_000,
+    });
+    await createListing(a.id, {
+      destinationCode: "KIH",
+      flightNo: "Y9-3",
+      departAt: hoursFromNow(24 * 20),
+      priceToman: 1_000_000,
+    });
     // An international destination from the same origin.
-    await createListing(b.id, { destinationCode: "DXB", destinationCity: "دبی", flightNo: "FZ-1", departAt: hoursFromNow(70), priceToman: 8_000_000 });
+    await createListing(b.id, {
+      destinationCode: "DXB",
+      destinationCity: "دبی",
+      flightNo: "FZ-1",
+      departAt: hoursFromNow(70),
+      priceToman: 8_000_000,
+    });
     server = await startServer();
     client = new TestClient(server.url);
   });

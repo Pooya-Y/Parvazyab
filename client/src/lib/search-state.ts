@@ -172,7 +172,9 @@ export function activeLeg(s: SearchState): Leg {
 
 /** Route and date a leg searches (the return leg runs the route backwards on the return date). */
 export function legRoute(s: SearchState, leg: Leg): { from: string; to: string; date?: string } {
-  return leg === "ret" && isRoundTrip(s) ? { from: s.to, to: s.from, date: s.ret } : { from: s.from, to: s.to, date: s.date };
+  return leg === "ret" && isRoundTrip(s)
+    ? { from: s.to, to: s.from, date: s.ret }
+    : { from: s.from, to: s.to, date: s.date };
 }
 
 /** Filters as seen by one leg: shared filters plus that leg's own time windows. */

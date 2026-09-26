@@ -36,7 +36,9 @@ describe("price calendar", { skip }, () => {
   }
 
   test("each day's minimum matches the cheapest search result that day", async () => {
-    const res = await client.get<Calendar>(`/api/search/calendar?originCode=THR&destinationCode=MHD&start=${today}&days=10`);
+    const res = await client.get<Calendar>(
+      `/api/search/calendar?originCode=THR&destinationCode=MHD&start=${today}&days=10`,
+    );
     assert.equal(res.status, 200);
     assert.equal(res.body.days.length, 10);
     assert.ok(res.body.days.filter((d) => d.minPrice !== null).length >= 8);

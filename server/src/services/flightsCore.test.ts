@@ -175,8 +175,14 @@ test("restrictOffers narrows offers and recomputes the price summary", () => {
   assert.equal(business.bestPriceToman, 4_900_000);
   assert.deepEqual(business.priceRange, { min: 4_900_000, max: 5_200_000 });
   assert.equal(business.agencyCount, 2);
-  assert.equal(restrictOffers(card, () => false), null);
-  assert.equal(restrictOffers(card, () => true), card);
+  assert.equal(
+    restrictOffers(card, () => false),
+    null,
+  );
+  assert.equal(
+    restrictOffers(card, () => true),
+    card,
+  );
 });
 
 test("cabin filter works per offer and feeds the price filter", () => {

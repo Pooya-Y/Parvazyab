@@ -42,7 +42,12 @@ function hourWindow(column: string, from: number, to: number, params: unknown[])
 export function buildCalendarSql(q: CalendarQuery): SqlQuery {
   const bounds = tehranDayBounds(q.start);
   if (!bounds) throw new Error(`invalid calendar start ${q.start}`);
-  const params: unknown[] = [q.originCode, q.destinationCode, new Date(bounds[0]), new Date(bounds[0] + q.days * 86_400_000)];
+  const params: unknown[] = [
+    q.originCode,
+    q.destinationCode,
+    new Date(bounds[0]),
+    new Date(bounds[0] + q.days * 86_400_000),
+  ];
   const where = [
     "f.origin_code = $1",
     "f.destination_code = $2",
@@ -74,7 +79,11 @@ export function buildCalendarSql(q: CalendarQuery): SqlQuery {
 }
 
 /** Every day of the window, filling days without flights with nulls. */
-export function fillCalendar(start: string, days: number, rows: { day: string; min_price: string | number; flights: string | number }[]): CalendarDay[] {
+export function fillCalendar(
+  start: string,
+  days: number,
+  rows: { day: string; min_price: string | number; flights: string | number }[],
+): CalendarDay[] {
   const byDay = new Map(rows.map((r) => [r.day, r]));
   return Array.from({ length: days }, (_, i) => {
     const date = addDaysToDateKey(start, i);

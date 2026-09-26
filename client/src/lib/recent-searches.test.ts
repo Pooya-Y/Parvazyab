@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { MAX_RECENT, parseStored, withSearch, withoutSearch, type RecentSearch } from "./recent-searches";
 
-const s = (from: string, to: string, extra: Partial<RecentSearch> = {}): RecentSearch => ({ from, to, at: 1, ...extra });
+const s = (from: string, to: string, extra: Partial<RecentSearch> = {}): RecentSearch => ({
+  from,
+  to,
+  at: 1,
+  ...extra,
+});
 
 describe("recent searches", () => {
   it("puts the latest first and de-duplicates by route and dates", () => {

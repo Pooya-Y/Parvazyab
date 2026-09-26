@@ -43,7 +43,13 @@ function useMonthPrices(from: string, to: string, month: MonthRange | null) {
  * Route + date(s) search form. `compact` (results page) collapses to a one-line
  * summary on small screens so the results stay above the fold.
  */
-export function SearchWidget({ initial, compact = false }: { initial?: Partial<SearchWidgetValues>; compact?: boolean }) {
+export function SearchWidget({
+  initial,
+  compact = false,
+}: {
+  initial?: Partial<SearchWidgetValues>;
+  compact?: boolean;
+}) {
   const navigate = useNavigate();
   const formId = useId();
   const today = todayKey();

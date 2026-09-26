@@ -93,6 +93,8 @@ export function exploreFrom(originCode: string, days: number, scope: ExploreScop
     scope,
     // Scope is applied after the cache so the three views share one query.
     destinations:
-      scope === "all" ? all.destinations : all.destinations.filter((d) => d.isInternational === (scope === "international")),
+      scope === "all"
+        ? all.destinations
+        : all.destinations.filter((d) => d.isInternational === (scope === "international")),
   }));
 }

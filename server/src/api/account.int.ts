@@ -44,9 +44,11 @@ describe("saved flights, agency listings and admin", { skip }, () => {
   test("saving a flight is idempotent and private to the user", async () => {
     await createListing(agency.id, { flightNo: "W5-500", departAt: hoursFromNow(20) });
     const client = await as(user);
-    const [flight] = (await client.get<{ id: string; offers: { agencyName: string }[] }[]>(
-      "/api/search?originCode=THR&destinationCode=MHD",
-    )).body;
+    const [flight] = (
+      await client.get<{ id: string; offers: { agencyName: string }[] }[]>(
+        "/api/search?originCode=THR&destinationCode=MHD",
+      )
+    ).body;
     const snapshot = { ...flight, agencyName: flight.offers[0].agencyName };
     const first = await client.post("/api/saved-flights", { snapshot });
     assert.equal(first.status, 201);
@@ -82,7 +84,9 @@ describe("saved flights, agency listings and admin", { skip }, () => {
       isActive: true,
     });
     assert.equal(created.status, 201);
-    const search = await owner.get<{ airline: string; flightNo: string }[]>("/api/search?originCode=IFN&destinationCode=SYZ");
+    const search = await owner.get<{ airline: string; flightNo: string }[]>(
+      "/api/search?originCode=IFN&destinationCode=SYZ",
+    );
     assert.deepEqual(
       search.body.map((f) => [f.airline, f.flightNo]),
       [["زاگرس", "IZ-708"]],
@@ -98,7 +102,10 @@ describe("saved flights, agency listings and admin", { skip }, () => {
     const regular = await as(user);
     assert.equal((await regular.get("/api/dashboard/listings")).status, 403);
 
-    assert.equal((await owner.patch(`/api/dashboard/listings/${created.body.id}/status`, { isActive: false })).status, 200);
+    assert.equal(
+      (await owner.patch(`/api/dashboard/listings/${created.body.id}/status`, { isActive: false })).status,
+      200,
+    );
     const hidden = await owner.get<unknown[]>("/api/search?originCode=IFN&destinationCode=SYZ");
     assert.equal(hidden.body.length, 0);
 
@@ -128,7 +135,11 @@ describe("saved flights, agency listings and admin", { skip }, () => {
       fareType: "charter",
     });
     assert.equal(charter.status, 201);
-    const scheduled = await owner.post("/api/dashboard/listings", { ...base, flightNo: "IR-551", priceToman: 3_100_000 });
+    const scheduled = await owner.post("/api/dashboard/listings", {
+      ...base,
+      flightNo: "IR-551",
+      priceToman: 3_100_000,
+    });
     assert.equal(scheduled.status, 201);
 
     const mine = await owner.get<{ flightNo: string; fareType: string }[]>("/api/dashboard/listings");
