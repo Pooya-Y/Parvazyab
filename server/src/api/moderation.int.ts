@@ -186,7 +186,10 @@ describe("moderation", { skip }, () => {
       licenseNo: "بند ب-۹۹",
     });
     assert.equal((await client.post("/api/dashboard/profile/verification")).status, 202);
-    assert.equal((await client.get<{ verificationPending: boolean }>("/api/dashboard/profile")).body.verificationPending, true);
+    assert.equal(
+      (await client.get<{ verificationPending: boolean }>("/api/dashboard/profile")).body.verificationPending,
+      true,
+    );
     const publicView = await new TestClient(server.url).get<Record<string, unknown>>(`/api/agencies/${slug}`);
     assert.equal("verificationPending" in publicView.body, false, "only the agency sees its own request");
 
