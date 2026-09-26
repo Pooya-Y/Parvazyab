@@ -9,6 +9,7 @@ import { alertRoutes, notificationRoutes } from "./alertRoutes";
 import outboundRoutes from "./outboundRoutes";
 import v1Routes from "./v1Routes";
 import agencyRoutes from "./agencyRoutes";
+import pushRoutes from "./pushRoutes";
 import { adminRoutes, dashboardRoutes, savedFlightRoutes } from "./accountRoutes";
 
 const router = Router();
@@ -31,6 +32,7 @@ router.use("/", searchRoutes);
 router.use("/", outboundRoutes);
 router.use("/v1", v1Routes);
 router.use("/agencies", agencyRoutes);
+router.use("/push", pushRoutes);
 router.use("/auth", authRoutes);
 router.use("/account", accountSettingsRoutes);
 router.use("/alerts", alertRoutes);

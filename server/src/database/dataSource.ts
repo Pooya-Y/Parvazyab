@@ -30,6 +30,7 @@ import { ListingClicks1790000007000 } from "./migrations/1790000007000-ListingCl
 import { ApiKeys1790000008000 } from "./migrations/1790000008000-ApiKeys";
 import { AgencyProfiles1790000009000 } from "./migrations/1790000009000-AgencyProfiles";
 import { Moderation1790000010000 } from "./migrations/1790000010000-Moderation";
+import { PushSubscriptions1790000011000 } from "./migrations/1790000011000-PushSubscriptions";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -59,6 +60,7 @@ export const AppDataSource = new DataSource({
     ApiKeys1790000008000,
     AgencyProfiles1790000009000,
     Moderation1790000010000,
+    PushSubscriptions1790000011000,
   ],
   migrationsTransactionMode: "each",
 });

@@ -6,6 +6,7 @@ import { sendMail } from "../notify/mailer";
 import { appLink, notificationMail } from "../notify/templates";
 import { config } from "../config/env";
 import { unsubscribeSignature } from "./alertLinks";
+import { pushToAccount } from "./push";
 
 /** price_drop: an alert fired; moderation: an administrator acted on the account, a listing or a request. */
 export type NotificationKind = "price_drop" | "moderation";
@@ -56,6 +57,16 @@ export async function notify(
       body: message.body,
       link: message.link,
       data: message.data ?? {},
+    }),
+  );
+  // The same tag for the same alert: a newer drop replaces the older one on the device.
+  const alertId = typeof message.data?.alertId === "string" ? message.data.alertId : null;
+  runInBackground("push notification", () =>
+    pushToAccount(account.id, {
+      title: message.title,
+      body: message.body,
+      link: message.link,
+      tag: alertId ? `alert-${alertId}` : message.kind,
     }),
   );
   if (email && canEmail(account)) {

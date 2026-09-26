@@ -42,6 +42,13 @@ const envSchema = z.object({
   KAVENEGAR_API_KEY: z.preprocess(blankAsUnset, z.string().optional()),
   /** A Kavenegar verify template whose text contains %token. */
   KAVENEGAR_TEMPLATE: z.preprocess(blankAsUnset, z.string().default("parvazyab-otp")),
+  /** Web push (VAPID). Generate a pair with `npx web-push generate-vapid-keys`; without one, push is off. */
+  VAPID_PUBLIC_KEY: z.preprocess(blankAsUnset, z.string().optional()),
+  VAPID_PRIVATE_KEY: z.preprocess(blankAsUnset, z.string().optional()),
+  /** A contact for push services: mailto: or https: URL. */
+  VAPID_SUBJECT: z.preprocess(blankAsUnset, z.string().default("mailto:support@parvazyab.example")),
+  /** webpush = send (needs the VAPID keys; the default when they are set); off; memory = tests only. */
+  PUSH_TRANSPORT: z.preprocess(blankAsUnset, z.enum(["webpush", "off", "memory"]).optional()),
   /** Optional bootstrap admin account, created on startup if missing. */
   ADMIN_EMAIL: z
     .string()
@@ -72,6 +79,14 @@ export function parseConfig(env: NodeJS.ProcessEnv): Config {
   if (parsed.SMS_TRANSPORT === "memory" && parsed.NODE_ENV !== "test") {
     throw new Error("SMS_TRANSPORT=memory is only for tests");
   }
+  const hasVapid = Boolean(parsed.VAPID_PUBLIC_KEY && parsed.VAPID_PRIVATE_KEY);
+  if (parsed.PUSH_TRANSPORT === "webpush" && !hasVapid) {
+    throw new Error("PUSH_TRANSPORT=webpush requires VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY");
+  }
+  if (parsed.PUSH_TRANSPORT === "memory" && parsed.NODE_ENV !== "test") {
+    throw new Error("PUSH_TRANSPORT=memory is only for tests");
+  }
+  parsed.PUSH_TRANSPORT ??= hasVapid ? "webpush" : "off";
   return parsed;
 }
 
