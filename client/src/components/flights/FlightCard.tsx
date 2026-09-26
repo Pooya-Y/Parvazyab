@@ -17,7 +17,7 @@ import {
 } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router";
-import { ChevronDown, ExternalLink, Heart, Loader2, Plane, Sparkles } from "lucide-react";
+import { Check, ChevronDown, ExternalLink, Heart, Loader2, Plane, Sparkles } from "lucide-react";
 import { useId, useState } from "react";
 
 /** Departure → duration/stops → arrival, laid out in RTL reading order. */
@@ -95,6 +95,17 @@ interface FlightCardProps {
   savePending?: boolean;
   /** Omit to hide the save button (e.g. signed out). */
   onToggleSave?: (flight: Flight) => void;
+  /** Round-trip selection mode: "choose this flight" replaces the buy action. */
+  selection?: FlightSelection;
+}
+
+export interface FlightSelection {
+  selected: boolean;
+  onSelect: () => void;
+  /** Button text, e.g. "انتخاب پرواز رفت". */
+  label: string;
+  /** Why this flight can't be chosen (e.g. it leaves before the outbound flight lands). */
+  unavailableReason?: string;
 }
 
 export function FlightCard({
@@ -104,6 +115,7 @@ export function FlightCard({
   saved = false,
   savePending = false,
   onToggleSave,
+  selection,
 }: FlightCardProps) {
   const [offersOpen, setOffersOpen] = useState(false);
   const headingId = useId();
@@ -119,6 +131,8 @@ export function FlightCard({
       className={cn(
         "rounded-lg border bg-card transition-shadow hover:shadow-sm",
         recommended && "border-primary/45 ring-1 ring-primary/15",
+        selection?.selected && "border-primary ring-2 ring-primary/25",
+        selection?.unavailableReason && "opacity-60 hover:shadow-none",
       )}
     >
       <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_13rem] md:gap-6 md:p-5">
@@ -205,17 +219,32 @@ export function FlightCard({
           </div>
 
           <div className="flex gap-2">
-            <Button asChild={Boolean(bookingUrl)} disabled={!bookingUrl} className="h-11 flex-1 px-5 md:h-10">
-              {bookingUrl ? (
-                <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
-                  خرید بلیط
-                  <ExternalLink className="size-3.5" aria-hidden />
-                  <span className="sr-only">(از {cheapest?.agencyName}، در پنجره جدید)</span>
-                </a>
-              ) : (
-                "لینک خرید در دسترس نیست"
-              )}
-            </Button>
+            {selection ? (
+              <Button
+                type="button"
+                variant={selection.selected ? "outline" : "default"}
+                className={cn("h-11 flex-1 px-5 md:h-10", selection.selected && "border-primary text-primary")}
+                onClick={selection.onSelect}
+                disabled={Boolean(selection.unavailableReason)}
+                aria-pressed={selection.selected}
+                aria-describedby={selection.unavailableReason ? `${headingId}-reason` : undefined}
+              >
+                {selection.selected ? <Check aria-hidden /> : null}
+                {selection.selected ? "انتخاب شد" : selection.label}
+              </Button>
+            ) : (
+              <Button asChild={Boolean(bookingUrl)} disabled={!bookingUrl} className="h-11 flex-1 px-5 md:h-10">
+                {bookingUrl ? (
+                  <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
+                    خرید بلیط
+                    <ExternalLink className="size-3.5" aria-hidden />
+                    <span className="sr-only">(از {cheapest?.agencyName}، در پنجره جدید)</span>
+                  </a>
+                ) : (
+                  "لینک خرید در دسترس نیست"
+                )}
+              </Button>
+            )}
             {onToggleSave ? (
               <Button
                 type="button"
@@ -233,7 +262,13 @@ export function FlightCard({
             ) : null}
           </div>
 
-          {flight.offers.length > 1 ? (
+          {selection?.unavailableReason ? (
+            <p id={`${headingId}-reason`} className="col-span-2 text-center text-xs text-muted-foreground">
+              {selection.unavailableReason}
+            </p>
+          ) : null}
+
+          {flight.offers.length > 1 && !selection ? (
             <button
               type="button"
               onClick={() => setOffersOpen((v) => !v)}

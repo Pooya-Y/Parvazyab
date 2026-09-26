@@ -59,6 +59,8 @@ interface JalaliDatePickerProps {
   prices?: Map<string, number | null>;
   /** Called with the visible month while the calendar is open, so the parent can fetch its prices. */
   onViewChange?: (range: { start: string; days: number }) => void;
+  /** Start of a date range ending at `value` (e.g. the outbound date in the return picker). */
+  rangeStart?: string;
 }
 
 /**
@@ -76,6 +78,7 @@ export function JalaliDatePicker({
   className,
   prices,
   onViewChange,
+  rangeStart,
 }: JalaliDatePickerProps) {
   const [open, setOpen] = useState(false);
   const today = todayKey();
@@ -224,6 +227,8 @@ export function JalaliDatePicker({
             const disabled = isDisabled(key);
             const price = prices?.get(key);
             const isCheapest = !disabled && price !== undefined && price !== null && price === cheapest;
+            const isRangeStart = key === rangeStart;
+            const inRange = Boolean(rangeStart && value && key > rangeStart && key < value);
             const priceLabel =
               price === undefined || disabled
                 ? ""
@@ -241,7 +246,7 @@ export function JalaliDatePicker({
                 onFocus={() => setFocusKey(key)}
                 aria-pressed={selected}
                 aria-current={key === today ? "date" : undefined}
-                aria-label={`${formatDateKey(key, { weekday: true })}${priceLabel}`}
+                aria-label={`${formatDateKey(key, { weekday: true })}${isRangeStart ? "، تاریخ رفت" : ""}${priceLabel}`}
                 className={cn(
                   "mx-auto flex w-full max-w-11 flex-col items-center justify-center rounded-md text-sm tabular-nums transition-colors",
                   showPrices ? "h-11" : "aspect-square max-w-10",
@@ -252,6 +257,8 @@ export function JalaliDatePicker({
                       ? "text-muted-foreground/40"
                       : "hover:bg-accent",
                   key === today && !selected && "font-semibold text-primary ring-1 ring-primary/40 ring-inset",
+                  inRange && !selected && "bg-primary/[0.07]",
+                  isRangeStart && !selected && "bg-primary/15 font-semibold text-primary",
                 )}
               >
                 <span className={cn(showPrices && "leading-5")}>{toFaDigits(i + 1)}</span>

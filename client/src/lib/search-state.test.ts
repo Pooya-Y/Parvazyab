@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { CLEARED_FILTERS, activeFilterCount, parseSearchState, toApiParams, toSearchParams } from "./search-state";
+import {
+  CLEARED_FILTERS,
+  activeFilterCount,
+  activeLeg,
+  isRoundTrip,
+  legFilters,
+  legPatch,
+  parseSearchState,
+  toApiParams,
+  toSearchParams,
+} from "./search-state";
 
 const parse = (qs: string) => parseSearchState(new URLSearchParams(qs));
 
@@ -86,5 +96,64 @@ describe("search URL state", () => {
     expect(toSearchParams(state).get("fare")).toBe("charter");
     expect(toApiParams(state).fareType).toBe("charter");
     expect(parse("from=THR&to=MHD&fare=vip").state.fareType).toBeUndefined();
+  });
+});
+
+describe("round trips", () => {
+  const rt = "from=THR&to=MHD&date=2030-01-02&ret=2030-01-06";
+
+  it("needs a valid return date on or after the outbound date", () => {
+    expect(isRoundTrip(parse(rt).state)).toBe(true);
+    expect(isRoundTrip(parse("from=THR&to=MHD&ret=2030-01-06").state)).toBe(false);
+    expect(isRoundTrip(parse("from=THR&to=MHD&date=2030-01-06&ret=2030-01-02").state)).toBe(false);
+    expect(isRoundTrip(parse("from=THR&to=MHD&date=2030-01-06&ret=2030-02-30").state)).toBe(false);
+    expect(isRoundTrip(parse("from=THR&to=MHD&date=2030-01-06&ret=2030-01-06").state)).toBe(true);
+  });
+
+  it("ignores round-trip params on one-way searches", () => {
+    const { state } = parse("from=THR&to=MHD&date=2030-01-02&ob=x&rb=y&leg=ret&rtime=early");
+    for (const key of ["ret", "outboundId", "returnId", "leg", "returnTime"] as const) expect(state[key]).toBeUndefined();
+    expect(toSearchParams(state).toString()).toBe("from=THR&to=MHD&date=2030-01-02");
+  });
+
+  it("derives the active leg from the selections", () => {
+    expect(activeLeg(parse(rt).state)).toBe("out");
+    expect(activeLeg(parse(`${rt}&ob=W5`).state)).toBe("ret");
+    expect(activeLeg(parse(`${rt}&ob=W5&leg=out`).state)).toBe("out");
+    expect(activeLeg(parse("from=THR&to=MHD&leg=ret").state)).toBe("out");
+  });
+
+  it("the return leg searches the route backwards on the return date", () => {
+    const { state } = parse(`${rt}&time=early&rtime=evening&cabin=business`);
+    expect(toApiParams(state, "out")).toMatchObject({
+      originCode: "THR",
+      destinationCode: "MHD",
+      date: "2030-01-02",
+      departFromHour: 0,
+      cabin: "business",
+    });
+    expect(toApiParams(state, "ret")).toMatchObject({
+      originCode: "MHD",
+      destinationCode: "THR",
+      date: "2030-01-06",
+      departFromHour: 18,
+      cabin: "business",
+    });
+    expect(legFilters(state, "ret").time).toBe("evening");
+  });
+
+  it("maps time-window changes onto the leg being edited", () => {
+    expect(legPatch("out", { time: "morning" })).toEqual({ time: "morning" });
+    expect(legPatch("ret", { time: "morning", cabin: "economy" })).toEqual({ returnTime: "morning", cabin: "economy" });
+    const cleared = legPatch("ret", CLEARED_FILTERS);
+    expect(cleared).toMatchObject({ returnTime: undefined, returnArrive: undefined, airlines: [] });
+    expect("time" in cleared).toBe(false);
+  });
+
+  it("round-trips every round-trip param", () => {
+    const { state } = parse(`${rt}&ob=A__1__2&rb=B__3__4&leg=out&rtime=early&rarrive=evening`);
+    expect(parseSearchState(toSearchParams(state)).state).toEqual(state);
+    expect(activeFilterCount(legFilters(state, "ret"))).toBe(2);
+    expect(activeFilterCount(legFilters(state, "out"))).toBe(0);
   });
 });

@@ -48,10 +48,23 @@ export interface SearchFiltersState {
   arrive?: TimeWindowId;
 }
 
+/** Round trips pick an outbound ("out") then a return ("ret") flight. */
+export type Leg = "out" | "ret";
+
 export interface SearchState extends SearchFiltersState {
   from: string;
   to: string;
   date?: string;
+  /** Return date; its presence makes the search a round trip. */
+  ret?: string;
+  /** Selected outbound / return flight ids (round trip). */
+  outboundId?: string;
+  returnId?: string;
+  /** Leg being chosen; derived from the selections when absent. */
+  leg?: Leg;
+  /** The return leg's own time windows (`time`/`arrive` belong to the outbound leg). */
+  returnTime?: TimeWindowId;
+  returnArrive?: TimeWindowId;
 }
 
 export type RouteProblem = "missing" | "unknown-airport" | "same-airport" | null;
@@ -75,6 +88,7 @@ const CABINS = new Set<string>(CABIN_OPTIONS.map((c) => c.value));
 const FARE_TYPES = new Set<string>(FARE_TYPE_OPTIONS.map((f) => f.value));
 
 const timeWindow = (value: string | null) => (value && TIME_IDS.has(value) ? (value as TimeWindowId) : undefined);
+const flightId = (value: string | null) => (value && value.length <= 255 ? value : undefined);
 
 export function parseSearchState(params: URLSearchParams): { state: SearchState; problem: RouteProblem } {
   const from = (params.get("from") ?? "").toUpperCase();
@@ -103,6 +117,20 @@ export function parseSearchState(params: URLSearchParams): { state: SearchState;
     arrive: timeWindow(params.get("arrive")),
   };
 
+  // A return date only counts on or after a valid outbound date.
+  const ret = params.get("ret");
+  if (state.date && isValidDateKey(ret) && ret >= state.date) {
+    const leg = params.get("leg");
+    Object.assign(state, {
+      ret,
+      outboundId: flightId(params.get("ob")),
+      returnId: flightId(params.get("rb")),
+      leg: leg === "out" || leg === "ret" ? leg : undefined,
+      returnTime: timeWindow(params.get("rtime")),
+      returnArrive: timeWindow(params.get("rarrive")),
+    } satisfies Partial<SearchState>);
+  }
+
   let problem: RouteProblem = null;
   if (!from || !to) problem = "missing";
   else if (!isKnownAirport(from) || !isKnownAirport(to)) problem = "unknown-airport";
@@ -121,10 +149,48 @@ export function toSearchParams(s: SearchState): URLSearchParams {
   if (s.fareType) p.set("fare", s.fareType);
   if (s.time) p.set("time", s.time);
   if (s.arrive) p.set("arrive", s.arrive);
+  if (s.ret && s.date) {
+    p.set("ret", s.ret);
+    if (s.returnTime) p.set("rtime", s.returnTime);
+    if (s.returnArrive) p.set("rarrive", s.returnArrive);
+    if (s.outboundId) p.set("ob", s.outboundId);
+    if (s.returnId) p.set("rb", s.returnId);
+    if (s.leg) p.set("leg", s.leg);
+  }
   return p;
 }
 
-export function searchUrl(route: { from: string; to: string; date?: string }): string {
+export function isRoundTrip(s: SearchState): s is SearchState & { date: string; ret: string } {
+  return Boolean(s.ret && s.date);
+}
+
+/** The leg being chosen: explicit `leg`, else outbound until it's picked. */
+export function activeLeg(s: SearchState): Leg {
+  if (!isRoundTrip(s)) return "out";
+  return s.leg ?? (s.outboundId ? "ret" : "out");
+}
+
+/** Route and date a leg searches (the return leg runs the route backwards on the return date). */
+export function legRoute(s: SearchState, leg: Leg): { from: string; to: string; date?: string } {
+  return leg === "ret" && isRoundTrip(s) ? { from: s.to, to: s.from, date: s.ret } : { from: s.from, to: s.to, date: s.date };
+}
+
+/** Filters as seen by one leg: shared filters plus that leg's own time windows. */
+export function legFilters(s: SearchState, leg: Leg): SearchFiltersState {
+  return leg === "ret" ? { ...s, time: s.returnTime, arrive: s.returnArrive } : s;
+}
+
+/** Map a filter change made while viewing `leg` onto URL state (time windows are per leg). */
+export function legPatch(leg: Leg, patch: Partial<SearchFiltersState>): Partial<SearchState> {
+  if (leg === "out") return patch;
+  const { time, arrive, ...shared } = patch;
+  const mapped: Partial<SearchState> = { ...shared };
+  if ("time" in patch) mapped.returnTime = time;
+  if ("arrive" in patch) mapped.returnArrive = arrive;
+  return mapped;
+}
+
+export function searchUrl(route: { from: string; to: string; date?: string; ret?: string }): string {
   return `/search?${toSearchParams({ ...DEFAULT_FILTERS, ...route }).toString()}`;
 }
 
@@ -134,13 +200,15 @@ export function flightDetailHref(flight: { id: string; originCode: string; desti
   return `/flight/${encodeURIComponent(flight.id)}?${params.toString()}`;
 }
 
-export function toApiParams(s: SearchState): SearchParams {
+export function toApiParams(state: SearchState, leg: Leg = "out"): SearchParams {
+  const route = legRoute(state, leg);
+  const s = legFilters(state, leg);
   const depart = TIME_WINDOWS.find((t) => t.id === s.time);
   const arrive = TIME_WINDOWS.find((t) => t.id === s.arrive);
   return {
-    originCode: s.from,
-    destinationCode: s.to,
-    date: s.date,
+    originCode: route.from,
+    destinationCode: route.to,
+    date: route.date,
     sort: s.sort,
     airlines: s.airlines.length ? s.airlines : undefined,
     maxStops: s.maxStops,
