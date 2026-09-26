@@ -257,6 +257,30 @@ export interface AgencyStats {
   maxPrice: number;
 }
 
+export interface ClickStats {
+  days: number;
+  /** First day of the window; it ends today (Iran time). */
+  start: string;
+  clicks: number;
+  /** Distinct visitors (a visitor is re-identified daily). */
+  visitors: number;
+  /** Clicks in the equally long period before. */
+  previousClicks: number;
+  daily: { date: string; clicks: number; visitors: number }[];
+  topListings: {
+    /** null once the listing has been deleted. */
+    listingId: string | null;
+    airline: string;
+    flightNo: string;
+    originCode: string;
+    destinationCode: string;
+    departAt: number;
+    clicks: number;
+  }[];
+  routes: { originCode: string; destinationCode: string; clicks: number }[];
+  sources: { search: number; detail: number; roundtrip: number; other: number };
+}
+
 export interface AdminStats {
   listingsTotal: number;
   listingsActive: number;

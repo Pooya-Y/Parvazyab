@@ -1,6 +1,7 @@
 import type {
   AdminStats,
   AgencyStats,
+  ClickStats,
   Flight,
   Listing,
   ListingInput,
@@ -181,6 +182,8 @@ export const api = {
         body: { isActive },
       }),
     deleteListing: (id: string) => request<void>(`/dashboard/listings/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    clicks: (days: number, signal?: AbortSignal) =>
+      request<ClickStats>("/dashboard/clicks", { query: { days }, signal }),
     becomeAgency: (agencyName: string) =>
       request<{ ok: true }>("/dashboard/become-agency", { method: "POST", body: { agencyName } }),
   },
@@ -214,6 +217,18 @@ export const api = {
       }),
   },
 };
+
+export type ClickSource = "search" | "detail" | "roundtrip";
+
+/**
+ * The "buy" link for an offer. It goes through the API's counting redirect
+ * (agencies see their click analytics); an offer whose own link is unusable
+ * gets none, so the button shows as unavailable instead of failing later.
+ */
+export function offerHref(offer: { listingId: string; bookingUrl: string }, source: ClickSource): string | undefined {
+  if (!safeExternalUrl(offer.bookingUrl)) return undefined;
+  return `${BASE}/go/${encodeURIComponent(offer.listingId)}?src=${source}`;
+}
 
 /** Only follow http(s) links from the API; anything else (e.g. `javascript:`) is dropped. */
 export function safeExternalUrl(url: string): string | undefined {

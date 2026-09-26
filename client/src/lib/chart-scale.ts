@@ -31,3 +31,13 @@ export function spreadIndices(length: number, count: number): number[] {
   if (length <= count) return Array.from({ length }, (_, i) => i);
   return Array.from({ length: count }, (_, i) => Math.round((i * (length - 1)) / (count - 1)));
 }
+
+/** Whole-number ticks from zero for counts: never fractional, and bars always start at zero. */
+export function countTicks(max: number, target = 4): number[] {
+  const top = Math.max(1, max);
+  const raw = top / target;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const step = Math.max(1, [1, 2, 5, 10].map((s) => s * magnitude).find((s) => s >= raw) ?? 10 * magnitude);
+  const hi = Math.ceil(top / step) * step;
+  return Array.from({ length: Math.round(hi / step) + 1 }, (_, i) => Math.round(i * step));
+}

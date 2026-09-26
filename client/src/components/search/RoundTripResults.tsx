@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { airportShortCity } from "@/domain/airports";
 import { useAuth } from "@/hooks/use-auth";
 import { useSavedFlights } from "@/hooks/use-saved-flights";
-import { safeExternalUrl } from "@/lib/api";
+import { offerHref } from "@/lib/api";
 import { formatDateKey, formatPrice, formatTime, toFaDigits } from "@/lib/persian";
 import { activeLeg, flightDetailHref, legRoute, toSearchParams, type Leg, type SearchState } from "@/lib/search-state";
 import type { Flight } from "@/lib/types";
@@ -113,7 +113,7 @@ function LegTabs({
 
 function LegPurchase({ leg, flight, date }: { leg: Leg; flight: Flight; date?: string }) {
   const offer = flight.offers[0];
-  const url = offer ? safeExternalUrl(offer.bookingUrl) : undefined;
+  const url = offer ? offerHref(offer, "roundtrip") : undefined;
   return (
     <section className="rounded-lg border p-3" aria-label={LEG_NAME[leg]}>
       <p className="mb-2 text-xs text-muted-foreground">
@@ -133,7 +133,7 @@ function LegPurchase({ leg, flight, date }: { leg: Leg; flight: Flight; date?: s
           ) : null}
           {url ? (
             <Button asChild size="sm">
-              <a href={url} target="_blank" rel="noopener noreferrer">
+              <a href={url} target="_blank" rel="noopener">
                 خرید {leg === "out" ? "رفت" : "برگشت"}
                 <ExternalLink className="size-3.5" aria-hidden />
                 <span className="sr-only">(از {offer?.agencyName}، در پنجره جدید)</span>

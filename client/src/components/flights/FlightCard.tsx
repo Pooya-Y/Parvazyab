@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { safeExternalUrl } from "@/lib/api";
+import { offerHref } from "@/lib/api";
 import type { Flight, FlightOffer } from "@/lib/types";
 import { explainFlight } from "@/services/flightsCore";
 import { flightDetailHref } from "@/lib/search-state";
@@ -121,7 +121,7 @@ export function FlightCard({
   const headingId = useId();
   const offersId = useId();
   const cheapest = flight.offers[0];
-  const bookingUrl = cheapest ? safeExternalUrl(cheapest.bookingUrl) : undefined;
+  const bookingUrl = cheapest ? offerHref(cheapest, "search") : undefined;
   const relative = relativeDayLabel(flight.departAt);
   const highlights = (flight.badges ?? []).filter((b) => b !== "مستقیم");
 
@@ -235,7 +235,7 @@ export function FlightCard({
             ) : (
               <Button asChild={Boolean(bookingUrl)} disabled={!bookingUrl} className="h-11 flex-1 px-5 md:h-10">
                 {bookingUrl ? (
-                  <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={bookingUrl} target="_blank" rel="noopener">
                     خرید بلیط
                     <ExternalLink className="size-3.5" aria-hidden />
                     <span className="sr-only">(از {cheapest?.agencyName}، در پنجره جدید)</span>
@@ -288,7 +288,7 @@ export function FlightCard({
       {offersOpen ? (
         <ul id={offersId} className="divide-y border-t bg-muted/30 px-4 md:px-5" aria-label="قیمت آژانس‌ها">
           {flight.offers.map((o, i) => {
-            const url = safeExternalUrl(o.bookingUrl);
+            const url = offerHref(o, "search");
             return (
               <li key={o.listingId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                 <span className="min-w-0 truncate">
@@ -300,7 +300,7 @@ export function FlightCard({
                   <span className="font-semibold tabular-nums">{formatPrice(o.priceToman)}</span>
                   {url ? (
                     <Button asChild variant="outline" size="sm">
-                      <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`خرید از ${o.agencyName}`}>
+                      <a href={url} target="_blank" rel="noopener" aria-label={`خرید از ${o.agencyName}`}>
                         خرید
                       </a>
                     </Button>

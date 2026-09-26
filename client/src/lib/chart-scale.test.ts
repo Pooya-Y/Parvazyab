@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { niceStep, spreadIndices, valueTicks } from "./chart-scale";
+import { countTicks, niceStep, spreadIndices, valueTicks } from "./chart-scale";
 
 describe("chart scales", () => {
   it("picks round steps", () => {
@@ -32,5 +32,16 @@ describe("chart scales", () => {
     expect(spreadIndices(60, 4)).toEqual([0, 20, 39, 59]);
     expect(spreadIndices(3, 4)).toEqual([0, 1, 2]);
     expect(spreadIndices(0, 4)).toEqual([]);
+  });
+});
+
+describe("countTicks", () => {
+  it("counts in whole steps from zero", () => {
+    expect(countTicks(0)).toEqual([0, 1]);
+    expect(countTicks(1)).toEqual([0, 1]);
+    expect(countTicks(3)).toEqual([0, 1, 2, 3]);
+    expect(countTicks(7)).toEqual([0, 2, 4, 6, 8]);
+    expect(countTicks(38)).toEqual([0, 10, 20, 30, 40]);
+    expect(countTicks(1234)).toEqual([0, 500, 1000, 1500]);
   });
 });

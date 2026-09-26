@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useSearchParams } from "react-router";
-import { BellRing, Heart, Info, MailWarning, ShieldCheck, Store, UserCog } from "lucide-react";
+import { BellRing, ChartColumn, Heart, Info, MailWarning, ShieldCheck, Store, UserCog } from "lucide-react";
 import { ResendVerificationButton } from "@/components/auth/ResendVerificationButton";
 import { PageShell } from "@/components/layout/PageShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,7 +31,13 @@ function navFor(user: User): NavGroup[] {
     },
   ];
   if (user.accountRole === "agency") {
-    groups.push({ label: "آژانس", items: [{ to: "/dashboard/agency", label: "پروازهای آژانس", icon: Store }] });
+    groups.push({
+      label: "آژانس",
+      items: [
+        { to: "/dashboard/agency", label: "پروازهای آژانس", icon: Store },
+        { to: "/dashboard/insights", label: "آمار بازدید", icon: ChartColumn },
+      ],
+    });
   }
   if (user.role === "admin") {
     groups.push({ label: "مدیریت", items: [{ to: "/dashboard/admin", label: "نمای کلی", icon: ShieldCheck }] });

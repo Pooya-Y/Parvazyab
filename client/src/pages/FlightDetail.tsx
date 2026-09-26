@@ -9,7 +9,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { PriceAlertButton } from "@/components/alerts/PriceAlertButton";
 import { RoutePriceTrend } from "@/components/charts/RoutePriceTrend";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, safeExternalUrl } from "@/lib/api";
+import { api, offerHref } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { useApiQuery } from "@/lib/use-api-query";
 import { isKnownAirport } from "@/domain/airports";
@@ -112,7 +112,7 @@ export default function FlightDetail() {
   }
 
   const cheapest = flight.offers[0];
-  const cheapestUrl = cheapest ? safeExternalUrl(cheapest.bookingUrl) : undefined;
+  const cheapestUrl = cheapest ? offerHref(cheapest, "detail") : undefined;
   const relative = relativeDayLabel(flight.departAt);
   const isSaved = saved.savedKeys.has(flight.id);
   const savePending = saved.pending.has(flight.id);
@@ -199,7 +199,7 @@ export default function FlightDetail() {
         </h2>
         <ul className="mt-3 divide-y overflow-hidden rounded-lg border bg-card">
           {flight.offers.map((o, i) => {
-            const url = safeExternalUrl(o.bookingUrl);
+            const url = offerHref(o, "detail");
             return (
               <li key={o.listingId} className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
@@ -218,7 +218,7 @@ export default function FlightDetail() {
                   </div>
                   {url ? (
                     <Button asChild variant={i === 0 ? "default" : "outline"}>
-                      <a href={url} target="_blank" rel="noopener noreferrer">
+                      <a href={url} target="_blank" rel="noopener">
                         خرید از آژانس
                         <ExternalLink className="size-3.5" aria-hidden />
                         <span className="sr-only">({o.agencyName}، در پنجره جدید)</span>
@@ -270,7 +270,7 @@ export default function FlightDetail() {
               <div className="truncate font-extrabold tabular-nums">{formatPrice(flight.bestPriceToman)}</div>
             </div>
             <Button asChild className="h-11 px-6">
-              <a href={cheapestUrl} target="_blank" rel="noopener noreferrer">
+              <a href={cheapestUrl} target="_blank" rel="noopener">
                 خرید بلیط
                 <ExternalLink className="size-3.5" aria-hidden />
               </a>
