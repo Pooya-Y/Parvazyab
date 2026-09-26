@@ -137,3 +137,55 @@ export function buildDemoSchedule(days = DEMO_WINDOW_DAYS, now = Date.now()): De
   }
   return specs;
 }
+
+/** Demo routes (economy), each with its lowest template fare. */
+export function demoRoutes(): { origin: string; destination: string; basePrice: number }[] {
+  const byRoute = new Map<string, { origin: string; destination: string; basePrice: number }>();
+  for (const t of DEMO_TEMPLATES) {
+    if ((t.cabin ?? "economy") !== "economy") continue;
+    const key = `${t.origin}-${t.destination}`;
+    const existing = byRoute.get(key);
+    if (!existing || t.basePrice < existing.basePrice) {
+      byRoute.set(key, { origin: t.origin, destination: t.destination, basePrice: t.basePrice });
+    }
+  }
+  return [...byRoute.values()];
+}
+
+export interface DemoSnapshot {
+  origin: string;
+  destination: string;
+  date: string;
+  minPrice: number;
+  avgPrice: number;
+}
+
+/**
+ * Plausible past daily lows for a demo route: a weekly rhythm, a slower swell,
+ * a per-route drift up or down over the period, and a little noise. Deterministic.
+ */
+export function buildDemoHistory(
+  route: { origin: string; destination: string; basePrice: number },
+  days: number,
+  today: string,
+): DemoSnapshot[] {
+  const key = `${route.origin}-${route.destination}`;
+  const drift = (unitHash(`${key}|drift`) - 0.5) * 0.24; // −12% … +12% across the window
+  const [y, m, d] = today.split("-").map(Number);
+  return Array.from({ length: days }, (_, i) => {
+    const daysAgo = days - i; // oldest first, ending yesterday
+    const date = new Date(Date.UTC(y, m - 1, d - daysAgo)).toISOString().slice(0, 10);
+    const t = i / days;
+    const wave = 0.05 * Math.sin((2 * Math.PI * daysAgo) / 7) + 0.04 * Math.sin((2 * Math.PI * daysAgo) / 23);
+    const noise = unitHash(`${key}|${date}`) * 0.08 - 0.04;
+    const level = route.basePrice * 0.92 * (1 + drift * (1 - t) + wave + noise);
+    const minPrice = Math.round(level / 10_000) * 10_000;
+    return {
+      origin: route.origin,
+      destination: route.destination,
+      date,
+      minPrice,
+      avgPrice: Math.round((minPrice * 1.12) / 10_000) * 10_000,
+    };
+  });
+}

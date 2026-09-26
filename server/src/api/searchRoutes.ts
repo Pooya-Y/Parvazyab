@@ -6,6 +6,7 @@ import { findFlight, searchFacets, searchFlights } from "../services/flightServi
 import { cached } from "../services/redis";
 import { notFound } from "../http/errors";
 import { priceCalendar } from "../services/priceCalendar";
+import { routePriceHistory } from "../services/priceHistory";
 import { airportCode, calendarQuerySchema, routeQuerySchema, searchQuerySchema } from "./schemas";
 
 const router = Router();
@@ -44,6 +45,14 @@ const routeKeySchema = z
   .string()
   .transform((k) => k.split("-"))
   .pipe(z.tuple([airportCode, airportCode]));
+
+const historyDays = z.coerce.number().int().min(7).max(180).default(60);
+
+/** Daily lowest economy fare for a route, oldest first, plus a verdict on today's price. */
+router.get("/routes/:routeKey/price-history", async (req, res) => {
+  const [originCode, destinationCode] = routeKeySchema.parse(req.params.routeKey);
+  res.json(await routePriceHistory(originCode, destinationCode, historyDays.parse(req.query.days)));
+});
 
 router.get("/flights/:routeKey/:flightId", async (req, res) => {
   const [originCode, destinationCode] = routeKeySchema.parse(req.params.routeKey);

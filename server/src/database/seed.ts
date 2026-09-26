@@ -3,7 +3,8 @@ import { AppDataSource, accounts, flightListings, popularRoutes } from "./dataSo
 import { hashPassword } from "../auth/auth";
 import { resolveCanonicalAirlineName } from "../domain/airlineRegistry";
 import { findAirport } from "../domain/airports";
-import { DEMO_WINDOW_DAYS, buildDemoSchedule } from "./demoSchedule";
+import { DEMO_WINDOW_DAYS, buildDemoHistory, buildDemoSchedule, demoRoutes } from "./demoSchedule";
+import { tehranTodayKey } from "../domain/time";
 
 const DEMO_PASSWORD = "Demo1234!";
 
@@ -55,6 +56,35 @@ export async function seedDemoData(now = Date.now()) {
 
   const inserted = await ensureDemoSchedule(agencyIds, now);
   if (inserted) console.log(`Seeded ${inserted} demo flights`);
+  const history = await backfillDemoHistory(now);
+  if (history) console.log(`Seeded ${history} demo price-history days`);
+}
+
+const DEMO_HISTORY_DAYS = 60;
+
+/** Past daily lows for demo routes, so trend charts have something to show. Never overwrites real snapshots. */
+async function backfillDemoHistory(now: number): Promise<number> {
+  const today = tehranTodayKey(now);
+  let inserted = 0;
+  for (const route of demoRoutes()) {
+    const snapshots = buildDemoHistory(route, DEMO_HISTORY_DAYS, today);
+    const rows = (await AppDataSource.query(
+      `INSERT INTO route_price_snapshots (origin_code, destination_code, snapshot_date, min_price, avg_price, offer_count)
+       SELECT $1, $2, d::date, p, a, 1
+         FROM unnest($3::text[], $4::bigint[], $5::bigint[]) AS s(d, p, a)
+       ON CONFLICT DO NOTHING
+       RETURNING 1`,
+      [
+        route.origin,
+        route.destination,
+        snapshots.map((s) => s.date),
+        snapshots.map((s) => s.minPrice),
+        snapshots.map((s) => s.avgPrice),
+      ],
+    )) as unknown[];
+    inserted += rows.length;
+  }
+  return inserted;
 }
 
 /** Insert the templated flights of the next DEMO_WINDOW_DAYS that don't exist yet. */

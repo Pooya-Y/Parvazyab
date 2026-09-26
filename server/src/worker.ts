@@ -8,6 +8,7 @@ import { seedDemoData } from "./database/seed";
 import { redis } from "./services/redis";
 import { config } from "./config/env";
 import { Scheduler } from "./jobs/scheduler";
+import { snapshotRoutePrices } from "./services/priceHistory";
 import { purgeStaleGuests } from "./services/maintenance";
 
 const MINUTE = 60_000;
@@ -34,12 +35,9 @@ async function main() {
     console.warn("[worker] Redis unavailable; continuing without cache.");
   }
 
-  const scheduler = new Scheduler().add({
-    name: "purge-stale-guests",
-    everyMs: 24 * HOUR,
-    run: () => purgeStaleGuests(),
-    runAtStart: true,
-  });
+  const scheduler = new Scheduler()
+    .add({ name: "route-price-snapshots", everyMs: 30 * MINUTE, run: () => snapshotRoutePrices(), runAtStart: true })
+    .add({ name: "purge-stale-guests", everyMs: 24 * HOUR, run: () => purgeStaleGuests(), runAtStart: true });
   if (config.SEED_DEMO_DATA) {
     scheduler.add({ name: "demo-timetable", everyMs: 6 * HOUR, run: () => seedDemoData() });
   }
