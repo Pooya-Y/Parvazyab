@@ -6,6 +6,7 @@ import {
   createGuest,
   currentUser,
   hashPassword,
+  isGuestAccount,
   sanitizeUser,
   setSession,
   verifyPassword,
@@ -13,6 +14,7 @@ import {
 import { HttpError } from "../http/errors";
 import { runInBackground } from "../lib/background";
 import { queueVerificationEmail, requestPasswordReset, resetPassword, verifyEmail } from "../services/accountSecurity";
+import { mergeGuestInto, upgradeGuest } from "../services/guests";
 import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, verifyEmailSchema } from "./schemas";
 
 const router = Router();
@@ -53,16 +55,15 @@ router.post("/register", credentialLimiter, async (req, res) => {
   const body = registerSchema.parse(req.body);
   const repo = accounts();
   if (await repo.exists({ where: { email: body.email } })) throw new HttpError(409, "ACCOUNT_ALREADY_EXISTS");
+  const fields = { name: body.name, email: body.email, passwordHash: await hashPassword(body.password) };
+  const current = await currentUser(req);
   let user;
   try {
-    user = await repo.save(
-      repo.create({
-        name: body.name,
-        email: body.email,
-        passwordHash: await hashPassword(body.password),
-        role: "user",
-      }),
-    );
+    // Signing up from a guest session keeps the guest's saved flights.
+    user =
+      current && isGuestAccount(current)
+        ? await upgradeGuest(current, fields)
+        : await repo.save(repo.create({ ...fields, role: "user" }));
   } catch (err) {
     if (isUniqueViolation(err)) throw new HttpError(409, "ACCOUNT_ALREADY_EXISTS");
     throw err;
@@ -78,6 +79,8 @@ router.post("/login", credentialLimiter, async (req, res) => {
   if (!(await verifyPassword(body.password, user?.passwordHash)) || !user) {
     throw new HttpError(401, "INVALID_AUTHENTICATION");
   }
+  const current = await currentUser(req);
+  if (current && isGuestAccount(current)) await mergeGuestInto(current, user);
   setSession(res, user);
   res.json({ user: sanitizeUser(user) });
 });
