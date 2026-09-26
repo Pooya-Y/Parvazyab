@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { AirportPicker } from "./AirportPicker";
 import { JalaliDatePicker } from "./JalaliDatePicker";
 import { airportShortCity } from "@/domain/airports";
-import { formatDateKey, todayKey } from "@/lib/persian";
+import { dayDiff, formatDateKey, todayKey } from "@/lib/persian";
+import { usePriceCalendar } from "@/hooks/use-price-calendar";
 import { searchUrl } from "@/lib/search-state";
 import { ArrowUpDown, Pencil, Search } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -35,6 +36,20 @@ export function SearchWidget({
   const [destinationCode, setDestinationCode] = useState(initial?.destinationCode || "MHD");
   const [date, setDate] = useState<string | null>(initial?.date ?? null);
   const [expanded, setExpanded] = useState(!compact);
+  // The month currently shown in the date picker; its prices load while it's open.
+  const [calendarMonth, setCalendarMonth] = useState<{ start: string; days: number } | null>(null);
+  const today = todayKey();
+  const calendar = usePriceCalendar(
+    calendarMonth && originCode !== destinationCode
+      ? {
+          originCode,
+          destinationCode,
+          // Never ask for days before today.
+          start: calendarMonth.start < today ? today : calendarMonth.start,
+          days: Math.max(1, calendarMonth.days - Math.max(0, dayDiff(calendarMonth.start, today))),
+        }
+      : null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const swap = () => {
@@ -136,8 +151,10 @@ export function SearchWidget({
             label="تاریخ حرکت"
             value={date}
             onChange={setDate}
-            minKey={todayKey()}
+            minKey={today}
             clearLabel={ANY_DAY}
+            prices={calendar.priceByDate}
+            onViewChange={setCalendarMonth}
           />
 
           <Button type="submit" size="lg" className="h-12 w-full text-base md:h-14 md:w-auto md:px-7">

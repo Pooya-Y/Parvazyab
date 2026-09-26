@@ -4,6 +4,7 @@ import type {
   Flight,
   Listing,
   ListingInput,
+  PriceCalendar,
   PopularRoute,
   SavedFlight,
   SearchFacets,
@@ -84,6 +85,11 @@ export const api = {
   search: (q: SearchParams, signal?: AbortSignal) => request<Flight[]>("/search", { query: { ...q }, signal }),
   searchFacets: (q: Pick<SearchParams, "originCode" | "destinationCode" | "date">, signal?: AbortSignal) =>
     request<SearchFacets>("/search/facets", { query: { ...q }, signal }),
+  /** Cheapest price per day; `params` carries the same filters as search (minus date/sort/price). */
+  priceCalendar: (
+    params: Omit<SearchParams, "date" | "sort" | "maxPriceToman"> & { start: string; days: number },
+    signal?: AbortSignal,
+  ) => request<PriceCalendar>("/search/calendar", { query: { ...params }, signal }),
   popularRoutes: (signal?: AbortSignal) => request<PopularRoute[]>("/routes/popular", { signal }),
 
   auth: {

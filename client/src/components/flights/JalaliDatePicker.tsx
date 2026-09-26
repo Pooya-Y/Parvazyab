@@ -4,6 +4,8 @@ import {
   FA_MONTHS,
   addDaysToKey,
   formatDateKey,
+  formatPrice,
+  formatThousandToman,
   jMonthsLength,
   jalaliFromKey,
   keyFromJalali,
@@ -14,7 +16,7 @@ import {
   type JalaliDate,
 } from "@/lib/persian";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = [
@@ -53,6 +55,10 @@ interface JalaliDatePickerProps {
   clearLabel?: string;
   placeholder?: string;
   className?: string;
+  /** Cheapest price per date key (null = no flights). Days without an entry show a loading slot. */
+  prices?: Map<string, number | null>;
+  /** Called with the visible month while the calendar is open, so the parent can fetch its prices. */
+  onViewChange?: (range: { start: string; days: number }) => void;
 }
 
 /**
@@ -68,6 +74,8 @@ export function JalaliDatePicker({
   clearLabel,
   placeholder = "انتخاب تاریخ",
   className,
+  prices,
+  onViewChange,
 }: JalaliDatePickerProps) {
   const [open, setOpen] = useState(false);
   const today = todayKey();
@@ -79,6 +87,11 @@ export function JalaliDatePicker({
   const isDisabled = (key: string) => (minKey ? key < minKey : false);
   const minView = minKey ? viewOf(minKey) : null;
   const canGoBack = !minView || monthIndex(view) > monthIndex(minView);
+
+  const reportView = useEffectEvent((start: string, length: number) => onViewChange?.({ start, days: length }));
+  useEffect(() => {
+    if (open) reportView(keyFromJalali({ ...view, jd: 1 }), jMonthsLength(view.jy, view.jm));
+  }, [open, view]);
 
   useEffect(() => {
     if (!open || !shouldFocus.current) return;
@@ -123,6 +136,14 @@ export function JalaliDatePicker({
   const days = Array.from({ length: jMonthsLength(view.jy, view.jm) }, (_, i) => keyFromJalali({ ...view, jd: i + 1 }));
   // The roving tab stop must be a day that is visible in this month.
   const tabStop = days.includes(focusKey) ? focusKey : (days.find((d) => !isDisabled(d)) ?? days[0]);
+
+  // The month's cheapest bookable day gets the "good" highlight (always paired with a text label).
+  const showPrices = prices !== undefined || onViewChange !== undefined;
+  const monthPrices = days
+    .filter((d) => !isDisabled(d))
+    .map((d) => prices?.get(d))
+    .filter((p): p is number => typeof p === "number");
+  const cheapest = monthPrices.length ? Math.min(...monthPrices) : null;
 
   const relative = value ? relativeDayLabel(value) : null;
   const display = value ? formatDateKey(value, { weekday: true }) : (clearLabel ?? placeholder);
@@ -201,6 +222,14 @@ export function JalaliDatePicker({
           {days.map((key, i) => {
             const selected = key === value;
             const disabled = isDisabled(key);
+            const price = prices?.get(key);
+            const isCheapest = !disabled && price !== undefined && price !== null && price === cheapest;
+            const priceLabel =
+              price === undefined || disabled
+                ? ""
+                : price === null
+                  ? "، بدون پرواز"
+                  : `، از ${formatPrice(price)}${isCheapest ? "، ارزان‌ترین روز این ماه" : ""}`;
             return (
               <button
                 key={key}
@@ -212,9 +241,10 @@ export function JalaliDatePicker({
                 onFocus={() => setFocusKey(key)}
                 aria-pressed={selected}
                 aria-current={key === today ? "date" : undefined}
-                aria-label={formatDateKey(key, { weekday: true })}
+                aria-label={`${formatDateKey(key, { weekday: true })}${priceLabel}`}
                 className={cn(
-                  "mx-auto flex aspect-square w-full max-w-10 items-center justify-center rounded-md text-sm tabular-nums transition-colors",
+                  "mx-auto flex w-full max-w-11 flex-col items-center justify-center rounded-md text-sm tabular-nums transition-colors",
+                  showPrices ? "h-11" : "aspect-square max-w-10",
                   "focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
                   selected
                     ? "bg-primary font-semibold text-primary-foreground"
@@ -224,11 +254,42 @@ export function JalaliDatePicker({
                   key === today && !selected && "font-semibold text-primary ring-1 ring-primary/40 ring-inset",
                 )}
               >
-                {toFaDigits(i + 1)}
+                <span className={cn(showPrices && "leading-5")}>{toFaDigits(i + 1)}</span>
+                {showPrices && !disabled ? (
+                  price === undefined ? (
+                    <span className="h-2 w-6 animate-pulse rounded-sm bg-muted" aria-hidden />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "text-[9.5px] leading-3",
+                        selected
+                          ? "text-primary-foreground/90"
+                          : isCheapest
+                            ? "font-bold text-success"
+                            : "text-muted-foreground",
+                      )}
+                    >
+                      {price === null ? "—" : formatThousandToman(price)}
+                    </span>
+                  )
+                ) : null}
               </button>
             );
           })}
         </div>
+
+        {showPrices ? (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            کمترین قیمت هر روز، به هزار تومان
+            {cheapest !== null ? (
+              <>
+                {" · ارزان‌ترین: "}
+                <span className="font-bold text-success">{formatThousandToman(cheapest)}</span>
+              </>
+            ) : null}
+          </p>
+        ) : null}
 
         <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
           <Button type="button" variant="ghost" size="sm" onClick={() => pick(today)} disabled={isDisabled(today)}>

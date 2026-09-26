@@ -55,6 +55,18 @@ export interface SearchFacets {
   fareTypes: FareType[];
 }
 
+export interface CalendarDay {
+  date: string;
+  /** Cheapest price that day, or null when nothing flies. */
+  minPrice: number | null;
+  flights: number;
+}
+
+export interface PriceCalendar {
+  start: string;
+  days: CalendarDay[];
+}
+
 export type SortMode = "best" | "cheapest" | "fastest" | "departure" | "arrival";
 
 export interface SearchParams {

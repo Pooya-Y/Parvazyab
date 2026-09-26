@@ -42,6 +42,11 @@ export function formatPrice(value: number): string {
   return `${formatToman(value)} تومان`;
 }
 
+/** Price in thousands of toman for dense grids: 2_450_000 → "۲٬۴۵۰" (label the unit nearby). */
+export function formatThousandToman(value: number): string {
+  return formatToman(value / 1000);
+}
+
 /** Compact price: ۴٫۲ میلیون تومان / ۹۸۰ هزار تومان */
 export function formatTomanCompact(value: number): string {
   if (value >= 1_000_000) {
@@ -277,7 +282,8 @@ export function addDaysToKey(key: string, days: number): string {
   return toDateKey(d2g(g2d(g.gy, g.gm, g.gd) + days));
 }
 
-function dayDiff(fromKey: string, toKey: string): number {
+/** Whole days from `fromKey` to `toKey` (negative when `toKey` is earlier). */
+export function dayDiff(fromKey: string, toKey: string): number {
   const a = parseDateKey(fromKey);
   const b = parseDateKey(toKey);
   if (!a || !b) return NaN;

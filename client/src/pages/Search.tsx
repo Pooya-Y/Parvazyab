@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { ChevronLeft, ChevronRight, RotateCcw, SearchX, SlidersHorizontal, WifiOff } from "lucide-react";
+import { RotateCcw, SearchX, SlidersHorizontal, WifiOff } from "lucide-react";
 import { PageShell } from "@/components/layout/PageShell";
 import { SearchWidget } from "@/components/flights/SearchWidget";
 import { FlightCard } from "@/components/flights/FlightCard";
 import { FlightCardSkeleton } from "@/components/flights/FlightCardSkeleton";
 import { SearchFilters } from "@/components/flights/SearchFilters";
+import { DateStrip } from "@/components/flights/DateStrip";
 import { StateMessage } from "@/components/StateMessage";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,7 +23,7 @@ import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { useApiQuery } from "@/lib/use-api-query";
 import { airportShortCity } from "@/domain/airports";
-import { addDaysToKey, formatDateKey, toFaDigits, todayKey } from "@/lib/persian";
+import { formatDateKey, toFaDigits } from "@/lib/persian";
 import {
   CLEARED_FILTERS,
   SORT_OPTIONS,
@@ -92,7 +93,8 @@ export default function Search() {
         </div>
       </div>
       {/* Remount per route so a new route shows skeletons instead of the previous route's flights. */}
-      <SearchResults key={routeKey} state={state} onChange={updateFilters} />
+      {/* Remount per route so a new route shows skeletons; a new date keeps the frame instead. */}
+      <SearchResults key={`${state.from}-${state.to}`} state={state} onChange={updateFilters} />
     </PageShell>
   );
 }
@@ -109,6 +111,8 @@ function SearchResults({
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const apiParams = toApiParams(state);
+  // The strip shows cheapest-per-day under the same filters (the price cap is what it displays, so it's excluded).
+  const { date, sort, maxPriceToman, ...calendarRequest } = apiParams;
   const facets = useApiQuery(`facets:${state.from}:${state.to}:${state.date ?? ""}`, (signal) =>
     api.searchFacets({ originCode: state.from, destinationCode: state.to, date: state.date }, signal),
   );
@@ -276,7 +280,11 @@ function SearchResults({
           </div>
         </div>
 
-        {state.date ? <DayStepper state={state} /> : null}
+        <DateStrip
+          request={calendarRequest}
+          selected={state.date}
+          hrefFor={(date) => `/search?${toSearchParams({ ...state, date })}`}
+        />
 
         {results.error && results.data ? (
           <p
@@ -306,33 +314,5 @@ function SearchResults({
         ) : null}
       </section>
     </div>
-  );
-}
-
-/** Previous/next day shortcuts for a dated search (no going before today). */
-function DayStepper({ state }: { state: SearchState }) {
-  if (!state.date) return null;
-  const prev = addDaysToKey(state.date, -1);
-  const next = addDaysToKey(state.date, 1);
-  const hrefFor = (date: string) => `/search?${toSearchParams({ ...state, date })}`;
-  return (
-    <nav className="mb-3 flex items-center justify-between gap-2" aria-label="تغییر روز">
-      {prev >= todayKey() ? (
-        <Button asChild variant="ghost" size="sm">
-          <Link to={hrefFor(prev)}>
-            <ChevronRight aria-hidden />
-            روز قبل
-          </Link>
-        </Button>
-      ) : (
-        <span />
-      )}
-      <Button asChild variant="ghost" size="sm">
-        <Link to={hrefFor(next)}>
-          روز بعد
-          <ChevronLeft aria-hidden />
-        </Link>
-      </Button>
-    </nav>
   );
 }
