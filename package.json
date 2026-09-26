@@ -1,0 +1,20 @@
+{
+  "name": "parvazyab",
+  "private": true,
+  "version": "5.0.0",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w client && npm run build -w server",
+    "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
+    "test": "npm test -w server && npm test -w client",
+    "lint": "npm run lint -w client"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

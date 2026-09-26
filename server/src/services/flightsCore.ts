@@ -1,0 +1,321 @@
+import { getRankingWeights, type RankingMode } from "../domain/rankingWeights";
+import { getAirlineReliability } from "../domain/airlineRegistry";
+import { tehranHour } from "../domain/time";
+
+/** Canonical listing shape used across the flight pipeline (JSON-safe). */
+export interface Listing {
+  id: string;
+  accountId: string;
+  originCode: string;
+  originCity: string;
+  destinationCode: string;
+  destinationCity: string;
+  airline: string;
+  flightNo: string;
+  departAt: number;
+  arriveAt: number;
+  durationMin: number;
+  stops: number;
+  cabin: "economy" | "business";
+  priceToman: number;
+  bookingUrl: string;
+  isActive: boolean;
+  agencyName: string;
+}
+
+export interface FlightOffer {
+  agencyName: string;
+  priceToman: number;
+  bookingUrl: string;
+}
+
+/** One real-world flight, possibly sold by several agencies. */
+export interface FlightCard {
+  id: string;
+  airline: string;
+  flightNo: string;
+  originCode: string;
+  originCity: string;
+  destinationCode: string;
+  destinationCity: string;
+  departAt: number;
+  arriveAt: number;
+  durationMin: number;
+  stops: number;
+  cabin: "economy" | "business";
+  bestPriceToman: number;
+  priceRange: { min: number; max: number };
+  agencyCount: number;
+  offers: FlightOffer[];
+  score?: number;
+  scoreBreakdown?: ScoreBreakdown;
+  badges?: string[];
+  reasons?: ExplanationReason[];
+}
+
+export interface ScoreBreakdown {
+  priceScore: number;
+  durationScore: number;
+  stopsScore: number;
+  reliabilityScore: number;
+}
+
+export interface ExplanationReason {
+  kind:
+    | "cheapest"
+    | "cheapest_direct"
+    | "direct"
+    | "fastest"
+    | "fewest_stops"
+    | "best_value"
+    | "earliest_departure"
+    | "earliest_arrival"
+    | "best_agency_spread"
+    | "balanced";
+  text: string;
+}
+
+/** Identity of a real flight: airline + flight number + departure minute. */
+export function buildFlightIdentityKey(offer: Pick<Listing, "airline" | "flightNo" | "departAt">): string {
+  const departMinute = Math.floor(offer.departAt / 60_000);
+  return `${offer.airline}__${offer.flightNo}__${departMinute}`;
+}
+
+/** Group listings into one card per real flight ("sold in N stores"). */
+export function groupOffersByFlight(offers: Listing[]): FlightCard[] {
+  const byKey = new Map<string, Listing[]>();
+  for (const offer of offers) {
+    const key = buildFlightIdentityKey(offer);
+    const bucket = byKey.get(key);
+    if (bucket) bucket.push(offer);
+    else byKey.set(key, [offer]);
+  }
+  return [...byKey.values()].map(buildFlightFromOffers);
+}
+
+function buildFlightFromOffers(offers: Listing[]): FlightCard {
+  const sorted = [...offers].sort((a, b) => a.priceToman - b.priceToman);
+  const cheapest = sorted[0];
+  return {
+    id: buildFlightIdentityKey(cheapest),
+    airline: cheapest.airline,
+    flightNo: cheapest.flightNo,
+    originCode: cheapest.originCode,
+    originCity: cheapest.originCity,
+    destinationCode: cheapest.destinationCode,
+    destinationCity: cheapest.destinationCity,
+    departAt: cheapest.departAt,
+    arriveAt: cheapest.arriveAt,
+    durationMin: cheapest.durationMin,
+    stops: cheapest.stops,
+    cabin: cheapest.cabin,
+    bestPriceToman: cheapest.priceToman,
+    priceRange: {
+      min: sorted[0].priceToman,
+      max: sorted[sorted.length - 1].priceToman,
+    },
+    agencyCount: offers.length,
+    offers: sorted.map((o) => ({
+      agencyName: o.agencyName,
+      priceToman: o.priceToman,
+      bookingUrl: o.bookingUrl,
+    })),
+  };
+}
+
+export interface HourWindow {
+  fromHour: number;
+  toHour: number;
+}
+
+export interface SearchFilters {
+  airlines?: string[];
+  maxStops?: number;
+  maxPriceToman?: number;
+  minPriceToman?: number;
+  minDurationMin?: number;
+  maxDurationMin?: number;
+  directOnly?: boolean;
+  /** Inclusive Tehran-time hour window. */
+  departWindow?: HourWindow;
+  arriveWindow?: HourWindow;
+  cabin?: "economy" | "business";
+}
+
+function inWindow(epochMs: number, w: HourWindow): boolean {
+  const h = tehranHour(epochMs);
+  // A window like 22→4 wraps past midnight.
+  return w.fromHour <= w.toHour ? h >= w.fromHour && h <= w.toHour : h >= w.fromHour || h <= w.toHour;
+}
+
+export function applyFilters(flights: FlightCard[], f: SearchFilters): FlightCard[] {
+  return flights.filter((fl) => {
+    if (f.airlines && f.airlines.length > 0 && !f.airlines.includes(fl.airline)) return false;
+    if (f.maxStops !== undefined && fl.stops > f.maxStops) return false;
+    if (f.directOnly && fl.stops !== 0) return false;
+    if (f.maxPriceToman !== undefined && fl.bestPriceToman > f.maxPriceToman) return false;
+    if (f.minPriceToman !== undefined && fl.bestPriceToman < f.minPriceToman) return false;
+    if (f.maxDurationMin !== undefined && fl.durationMin > f.maxDurationMin) return false;
+    if (f.minDurationMin !== undefined && fl.durationMin < f.minDurationMin) return false;
+    if (f.cabin && fl.cabin !== f.cabin) return false;
+    if (f.departWindow && !inWindow(fl.departAt, f.departWindow)) return false;
+    if (f.arriveWindow && !inWindow(fl.arriveAt, f.arriveWindow)) return false;
+    return true;
+  });
+}
+
+export const SORT_MODES = ["best", "cheapest", "fastest", "departure", "arrival"] as const;
+export type SortMode = (typeof SORT_MODES)[number];
+
+/**
+ * Order an already-ranked set. "best" uses the score attached by `rankFlights`
+ * (so the ranking mode chosen there is respected).
+ */
+export function sortFlights(flights: FlightCard[], sort: SortMode = "best"): FlightCard[] {
+  const arr = [...flights];
+  switch (sort) {
+    case "cheapest":
+      return arr.sort((a, b) => a.bestPriceToman - b.bestPriceToman || a.departAt - b.departAt);
+    case "fastest":
+      return arr.sort((a, b) => a.durationMin - b.durationMin || a.bestPriceToman - b.bestPriceToman);
+    case "departure":
+      return arr.sort((a, b) => a.departAt - b.departAt);
+    case "arrival":
+      return arr.sort((a, b) => a.arriveAt - b.arriveAt);
+    case "best":
+      return arr.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  }
+}
+
+function minMaxNormalize(value: number, min: number, max: number): number {
+  if (max === min) return 0.5;
+  return (value - min) / (max - min);
+}
+
+function scoreForStops(stops: number): number {
+  if (stops === 0) return 1;
+  if (stops === 1) return 0.5;
+  return 0.2;
+}
+
+function roundTo(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
+export interface Scored {
+  score: number;
+  breakdown: ScoreBreakdown;
+}
+
+export interface ResultBounds {
+  minPrice: number;
+  maxPrice: number;
+  minDuration: number;
+  maxDuration: number;
+}
+
+export function resultBounds(flights: FlightCard[]): ResultBounds {
+  let minPrice = Infinity;
+  let maxPrice = -Infinity;
+  let minDuration = Infinity;
+  let maxDuration = -Infinity;
+  for (const f of flights) {
+    minPrice = Math.min(minPrice, f.bestPriceToman);
+    maxPrice = Math.max(maxPrice, f.bestPriceToman);
+    minDuration = Math.min(minDuration, f.durationMin);
+    maxDuration = Math.max(maxDuration, f.durationMin);
+  }
+  return { minPrice, maxPrice, minDuration, maxDuration };
+}
+
+/** Score one flight against the result set's bounds (0..1, higher = better). */
+export function computeScore(flight: FlightCard, bounds: ResultBounds, mode: RankingMode = "relevance"): Scored {
+  const weights = getRankingWeights(mode);
+  const priceScore = 1 - minMaxNormalize(flight.bestPriceToman, bounds.minPrice, bounds.maxPrice);
+  const durationScore = 1 - minMaxNormalize(flight.durationMin, bounds.minDuration, bounds.maxDuration);
+  const stopsScore = scoreForStops(flight.stops);
+  const reliabilityScore = getAirlineReliability(flight.airline);
+  const total =
+    priceScore * weights.price +
+    durationScore * weights.duration +
+    stopsScore * weights.stops +
+    reliabilityScore * weights.reliability;
+  return {
+    score: roundTo(total, 4),
+    breakdown: {
+      priceScore: roundTo(priceScore, 2),
+      durationScore: roundTo(durationScore, 2),
+      stopsScore: roundTo(stopsScore, 2),
+      reliabilityScore: roundTo(reliabilityScore, 2),
+    },
+  };
+}
+
+/** Compute + attach score/badges/reasons to every flight; returns them best-first. */
+export function rankFlights(flights: FlightCard[], mode: RankingMode = "relevance"): FlightCard[] {
+  if (flights.length === 0) return flights;
+
+  const bounds = resultBounds(flights);
+  const cheapest = bounds.minPrice;
+  const fastest = bounds.minDuration;
+  let cheapestDirect: number | null = null;
+  let fastestDirect: number | null = null;
+  let earliestDeparture = Infinity;
+  let earliestArrival = Infinity;
+  let maxAgencyCount = 0;
+  for (const f of flights) {
+    if (f.stops === 0) {
+      cheapestDirect = Math.min(cheapestDirect ?? Infinity, f.bestPriceToman);
+      fastestDirect = Math.min(fastestDirect ?? Infinity, f.durationMin);
+    }
+    earliestDeparture = Math.min(earliestDeparture, f.departAt);
+    earliestArrival = Math.min(earliestArrival, f.arriveAt);
+    maxAgencyCount = Math.max(maxAgencyCount, f.agencyCount);
+  }
+
+  return flights
+    .map((f) => {
+      const { score, breakdown } = computeScore(f, bounds, mode);
+      const badges: string[] = [];
+      const reasons: ExplanationReason[] = [];
+
+      if (f.bestPriceToman === cheapest) {
+        badges.push("ارزان‌ترین");
+        reasons.push({ kind: "cheapest", text: "ارزان‌ترین گزینه در میان همه نتایج این جستجوست" });
+      }
+      if (f.stops === 0) {
+        badges.push("مستقیم");
+        if (cheapestDirect !== null && f.bestPriceToman === cheapestDirect && f.bestPriceToman !== cheapest) {
+          reasons.push({ kind: "cheapest_direct", text: "ارزان‌ترین پرواز مستقیم این مسیر است" });
+        }
+        if (fastestDirect !== null && f.durationMin === fastestDirect && f.durationMin !== fastest) {
+          reasons.push({ kind: "fastest", text: "سریع‌ترین پرواز مستقیم این مسیر است" });
+        }
+        if (reasons.length === 0) {
+          reasons.push({ kind: "direct", text: "بدون توقف به مقصد می‌رسد" });
+        }
+      }
+      if (f.durationMin === fastest) {
+        badges.push("سریع‌ترین");
+        if (!reasons.some((r) => r.kind === "fastest")) {
+          reasons.unshift({ kind: "fastest", text: "کوتاه‌ترین زمان پرواز را در میان همه گزینه‌ها دارد" });
+        }
+      }
+      if (f.agencyCount === maxAgencyCount && f.agencyCount > 1) {
+        reasons.push({
+          kind: "best_agency_spread",
+          text: `در ${f.agencyCount} آژانس عرضه شده و ارزان‌ترین قیمت آن نمایش داده شده است`,
+        });
+      }
+      if (f.departAt === earliestDeparture && f.stops === 0) {
+        reasons.push({ kind: "earliest_departure", text: "زودترین ساعت حرکت مستقیم را دارد" });
+      }
+      if (f.arriveAt === earliestArrival) {
+        reasons.push({ kind: "earliest_arrival", text: "زودتر از همه به مقصد می‌رسد" });
+      }
+
+      return { ...f, score, scoreBreakdown: breakdown, badges, reasons };
+    })
+    .sort((a, b) => b.score - a.score);
+}
