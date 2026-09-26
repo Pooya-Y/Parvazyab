@@ -6,6 +6,7 @@ import { DateStrip } from "@/components/flights/DateStrip";
 import { FlightCard, FlightTimeline } from "@/components/flights/FlightCard";
 import { StateMessage } from "@/components/StateMessage";
 import { Button } from "@/components/ui/button";
+import { ShareButton } from "@/components/ShareButton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { airportShortCity } from "@/domain/airports";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,13 +17,7 @@ import { activeLeg, flightDetailHref, legRoute, toSearchParams, type Leg, type S
 import type { Flight } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { turnaroundConflict } from "@/lib/round-trip";
-import {
-  FiltersAside,
-  FiltersSheetButton,
-  ResultsBody,
-  SignInHint,
-  SortSelect,
-} from "./leg-results";
+import { FiltersAside, FiltersSheetButton, ResultsBody, SignInHint, SortSelect } from "./leg-results";
 import { resultsSummary, useLegResults } from "./use-leg-results";
 
 const LEG_NAME: Record<Leg, string> = { out: "پرواز رفت", ret: "پرواز برگشت" };
@@ -291,6 +286,12 @@ export function RoundTripResults({ state, update }: { state: SearchState & { ret
             <div className="flex w-full items-center gap-2 sm:w-auto">
               <FiltersSheetButton data={data} onChange={update} />
               <SortSelect value={state.sort} onChange={(sort) => update({ sort })} />
+              <ShareButton
+                compact
+                label="اشتراک‌گذاری این جستجو"
+                title="پروازیاب"
+                text={`رفت و برگشت ${airportShortCity(state.from)} به ${airportShortCity(state.to)} در پروازیاب`}
+              />
             </div>
           </div>
 

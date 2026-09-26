@@ -4,18 +4,13 @@ import { DateStrip } from "@/components/flights/DateStrip";
 import { FlightCard } from "@/components/flights/FlightCard";
 import { StateMessage } from "@/components/StateMessage";
 import { Button } from "@/components/ui/button";
+import { ShareButton } from "@/components/ShareButton";
 import { airportShortCity } from "@/domain/airports";
 import { useAuth } from "@/hooks/use-auth";
 import { useSavedFlights } from "@/hooks/use-saved-flights";
 import { formatDateKey } from "@/lib/persian";
 import { searchUrl, toSearchParams, type SearchState } from "@/lib/search-state";
-import {
-  FiltersAside,
-  FiltersSheetButton,
-  ResultsBody,
-  SignInHint,
-  SortSelect,
-} from "./leg-results";
+import { FiltersAside, FiltersSheetButton, ResultsBody, SignInHint, SortSelect } from "./leg-results";
 import { resultsSummary, useLegResults } from "./use-leg-results";
 
 export function OneWayResults({
@@ -69,6 +64,14 @@ export function OneWayResults({
           <div className="flex w-full items-center gap-2 sm:w-auto">
             <FiltersSheetButton data={data} onChange={onChange} />
             <SortSelect value={state.sort} onChange={(sort) => onChange({ sort })} />
+            <ShareButton
+              compact
+              label="اشتراک‌گذاری این جستجو"
+              title="پروازیاب"
+              text={`پروازهای ${airportShortCity(state.from)} به ${airportShortCity(state.to)}${
+                state.date ? `، ${formatDateKey(state.date, { weekday: true })}` : ""
+              } در پروازیاب`}
+            />
           </div>
         </div>
 

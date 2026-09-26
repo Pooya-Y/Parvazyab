@@ -5,6 +5,7 @@ import { FlightCard, FlightTimeline, OfferTags } from "@/components/flights/Flig
 import { StateMessage } from "@/components/StateMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ShareButton } from "@/components/ShareButton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, safeExternalUrl } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
@@ -13,6 +14,7 @@ import { isKnownAirport } from "@/domain/airports";
 import {
   formatJalaliWeekday,
   formatPrice,
+  formatTime,
   formatToman,
   relativeDayLabel,
   toFaDigits,
@@ -131,18 +133,26 @@ export default function FlightDetail() {
             </span>
           </p>
         </div>
-        {isAuthenticated ? (
-          <Button
-            variant="outline"
-            onClick={() => void saved.toggle(flight)}
-            disabled={savePending}
-            aria-pressed={isSaved}
-            className={cn(isSaved && "border-primary/40 text-primary")}
-          >
-            {savePending ? <Loader2 className="animate-spin" /> : <Heart className={cn(isSaved && "fill-current")} />}
-            {isSaved ? "ذخیره شده" : "ذخیره پرواز"}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <ShareButton
+            title={`${flight.airline} ${flight.flightNo}`}
+            text={`${flight.airline} ${flight.originCity} به ${flight.destinationCity}، ${formatJalaliWeekday(
+              flight.departAt,
+            )} ساعت ${formatTime(flight.departAt)}، از ${formatPrice(flight.bestPriceToman)} در پروازیاب`}
+          />
+          {isAuthenticated ? (
+            <Button
+              variant="outline"
+              onClick={() => void saved.toggle(flight)}
+              disabled={savePending}
+              aria-pressed={isSaved}
+              className={cn(isSaved && "border-primary/40 text-primary")}
+            >
+              {savePending ? <Loader2 className="animate-spin" /> : <Heart className={cn(isSaved && "fill-current")} />}
+              {isSaved ? "ذخیره شده" : "ذخیره پرواز"}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <section className="mt-5 rounded-lg border bg-card p-4 sm:p-6" aria-label="برنامه پرواز">
