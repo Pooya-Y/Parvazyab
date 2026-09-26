@@ -13,6 +13,8 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   /** Re-read the session (e.g. after the account's role changed). */
   refresh: () => Promise<void>;
+  /** Adopt the user an API call returned (password reset signs in; profile edits update it). */
+  applyUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       refresh,
+      applyUser: accept,
     };
   }, [user, isLoading, refresh]);
 

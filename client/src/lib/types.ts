@@ -137,6 +137,9 @@ export interface User {
   role: AccountRole;
   accountRole: "agency" | "user";
   agencyName?: string | null;
+  /** ISO timestamps; null until the email is verified / the password is first changed. */
+  emailVerifiedAt: string | null;
+  passwordChangedAt: string | null;
   createdAt: string;
 }
 

@@ -12,6 +12,9 @@ import { Loader2 } from "lucide-react";
 
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword.tsx"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword.tsx"));
+const VerifyEmail = lazy(() => import("./pages/auth/VerifyEmail.tsx"));
 const Search = lazy(() => import("./pages/Search.tsx"));
 const FlightDetail = lazy(() => import("./pages/FlightDetail.tsx"));
 const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout.tsx"));
@@ -21,6 +24,7 @@ const DashboardIndex = lazy(() =>
 const SavedFlightsPage = lazy(() => import("./pages/dashboard/SavedFlightsPage.tsx"));
 const AgencyListingsPage = lazy(() => import("./pages/dashboard/AgencyListingsPage.tsx"));
 const AdminOverviewPage = lazy(() => import("./pages/dashboard/AdminOverviewPage.tsx"));
+const AccountPage = lazy(() => import("./pages/dashboard/AccountPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Explore = lazy(() => import("./pages/Explore.tsx"));
 
@@ -57,6 +61,9 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="/explore" element={<Explore />} />
                   <Route path="/flight/:id" element={<FlightDetail />} />
                   <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/auth/forgot" element={<ForgotPassword />} />
+                  <Route path="/auth/reset" element={<ResetPassword />} />
+                  <Route path="/auth/verify-email" element={<VerifyEmail />} />
                   <Route
                     path="/dashboard"
                     element={
@@ -67,6 +74,7 @@ createRoot(document.getElementById("root")!).render(
                   >
                     <Route index element={<DashboardIndex />} />
                     <Route path="saved" element={<SavedFlightsPage />} />
+                    <Route path="account" element={<AccountPage />} />
                     <Route
                       path="agency"
                       element={

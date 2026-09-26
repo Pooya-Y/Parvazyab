@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronDown, Heart, LayoutDashboard, LogIn, LogOut, Plane, UserRound } from "lucide-react";
+import { ChevronDown, Heart, LayoutDashboard, LogIn, LogOut, Plane, UserCog, UserRound } from "lucide-react";
+import { isGuest } from "@/lib/account";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
@@ -51,7 +52,7 @@ function AccountMenu() {
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuLabel className="truncate font-normal">
           <span className="block truncate font-semibold">{displayName}</span>
-          {user.email.endsWith("@guest.parvazyab.local") ? null : (
+          {isGuest(user) ? null : (
             <span className="block truncate text-xs text-muted-foreground" dir="ltr">
               {user.email}
             </span>
@@ -68,6 +69,12 @@ function AccountMenu() {
           <Link to="/dashboard/saved">
             <Heart aria-hidden />
             پروازهای ذخیره‌شده
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard/account">
+            <UserCog aria-hidden />
+            تنظیمات حساب
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

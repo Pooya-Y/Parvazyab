@@ -50,7 +50,7 @@ function toQueryString(query?: Record<string, QueryValue>): string {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   query?: Record<string, QueryValue>;
   body?: unknown;
   signal?: AbortSignal;
@@ -107,6 +107,22 @@ export const api = {
       request<{ user: User }>("/auth/register", { method: "POST", body: { name, email, password } }),
     guest: () => request<{ user: User }>("/auth/guest", { method: "POST" }),
     logout: () => request<void>("/auth/logout", { method: "POST" }),
+    /** Always succeeds, whether or not the email has an account. */
+    forgotPassword: (email: string) =>
+      request<{ ok: true }>("/auth/password/forgot", { method: "POST", body: { email } }),
+    /** Signs this browser in and ends every other session. */
+    resetPassword: (token: string, password: string) =>
+      request<{ user: User }>("/auth/password/reset", { method: "POST", body: { token, password } }),
+    verifyEmail: (token: string) => request<{ ok: true }>("/auth/email/verify", { method: "POST", body: { token } }),
+  },
+
+  account: {
+    updateProfile: (name: string) => request<{ user: User }>("/account/profile", { method: "PATCH", body: { name } }),
+    /** Keeps this session; every other one ends. */
+    changePassword: (currentPassword: string, newPassword: string) =>
+      request<{ user: User }>("/account/password", { method: "PUT", body: { currentPassword, newPassword } }),
+    resendVerification: () => request<{ ok: true }>("/account/email/verification", { method: "POST" }),
+    signOutOtherSessions: () => request<void>("/account/sessions", { method: "DELETE" }),
   },
 
   saved: {

@@ -17,6 +17,12 @@ const MESSAGES: Record<string, string> = {
   INVALID_BOOKING_URL: "لینک رزرو باید با https:// یا http:// شروع شود.",
   CANNOT_CHANGE_ADMIN: "نقش مدیران سیستم قابل تغییر نیست.",
   CANNOT_CHANGE_OWN_ROLE: "نمی‌توانید نقش حساب خودتان را تغییر دهید.",
+  INVALID_OR_EXPIRED_TOKEN: "این پیوند منقضی شده یا قبلاً استفاده شده است.",
+  RESEND_TOO_SOON: "ایمیل قبلی همین الان فرستاده شد. یک دقیقه بعد دوباره تلاش کنید.",
+  EMAIL_ALREADY_VERIFIED: "نشانی ایمیل شما قبلاً تأیید شده است.",
+  GUEST_ACCOUNT: "این کار برای حساب مهمان ممکن نیست. یک حساب دائمی بسازید.",
+  INVALID_CURRENT_PASSWORD: "رمز عبور فعلی درست نیست.",
+  PASSWORD_UNCHANGED: "رمز عبور تازه باید با رمز فعلی فرق داشته باشد.",
   INVALID_REQUEST: "اطلاعات واردشده معتبر نیست.",
 };
 

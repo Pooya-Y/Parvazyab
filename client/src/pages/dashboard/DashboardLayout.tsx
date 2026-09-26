@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
-import { Link, Navigate, NavLink, Outlet, useSearchParams } from "react-router";
-import { Heart, Info, ShieldCheck, Store } from "lucide-react";
+import { Link, Navigate, NavLink, Outlet, useLocation, useSearchParams } from "react-router";
+import { Heart, Info, MailWarning, ShieldCheck, Store, UserCog } from "lucide-react";
+import { ResendVerificationButton } from "@/components/auth/ResendVerificationButton";
 import { PageShell } from "@/components/layout/PageShell";
 import { useAuth } from "@/hooks/use-auth";
 import { isGuest } from "@/lib/account";
@@ -20,7 +21,13 @@ interface NavGroup {
 
 function navFor(user: User): NavGroup[] {
   const groups: NavGroup[] = [
-    { label: "حساب من", items: [{ to: "/dashboard/saved", label: "پروازهای ذخیره‌شده", icon: Heart }] },
+    {
+      label: "حساب من",
+      items: [
+        { to: "/dashboard/saved", label: "پروازهای ذخیره‌شده", icon: Heart },
+        { to: "/dashboard/account", label: "تنظیمات حساب", icon: UserCog },
+      ],
+    },
   ];
   if (user.accountRole === "agency") {
     groups.push({ label: "آژانس", items: [{ to: "/dashboard/agency", label: "پروازهای آژانس", icon: Store }] });
@@ -40,8 +47,11 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 /** Dashboard frame: greeting, section navigation and the active section. */
 export default function DashboardLayout() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
   if (!user) return null; // RequireAuth renders this only for signed-in users.
   const groups = navFor(user);
+  // The account page shows the same status next to the email; don't say it twice.
+  const unverified = !isGuest(user) && user.emailVerifiedAt === null && pathname !== "/dashboard/account";
 
   return (
     <PageShell className="container-page py-6 sm:py-8">
@@ -57,6 +67,22 @@ export default function DashboardLayout() {
             </Link>
           </span>
         </p>
+      ) : null}
+
+      {unverified ? (
+        <div className="mt-4 flex flex-col gap-3 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm sm:flex-row sm:items-center">
+          <p className="flex flex-1 items-start gap-2 leading-7">
+            <MailWarning className="mt-1.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span>
+              نشانی{" "}
+              <bdi dir="ltr" className="inline-block max-w-full break-all align-top">
+                {user.email}
+              </bdi>{" "}
+              هنوز تأیید نشده است. پیوند تأیید را در ایمیل خود باز کنید تا هشدارهای قیمت برایتان فرستاده شود.
+            </span>
+          </p>
+          <ResendVerificationButton />
+        </div>
       ) : null}
 
       <div className="mt-6 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-8">
