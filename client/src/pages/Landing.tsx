@@ -220,7 +220,7 @@ export default function Landing() {
             </ul>
           </div>
           <Button size="lg" asChild className="w-full shrink-0 md:w-auto">
-            <Link to="/auth?returnTo=%2Fdashboard%3Ftab%3Dagency">
+            <Link to="/auth?returnTo=%2Fdashboard">
               ثبت‌نام آژانس
               <ArrowLeft aria-hidden />
             </Link>

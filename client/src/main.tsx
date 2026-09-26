@@ -3,9 +3,9 @@ import { DirectionProvider } from "@radix-ui/react-direction";
 import { ThemeProvider } from "next-themes";
 import { StrictMode, Suspense, lazy, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
-import { RequireAuth } from "@/components/RequireAuth";
+import { RequireAuth, RequireRole } from "@/components/RequireAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
@@ -14,7 +14,13 @@ const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Search = lazy(() => import("./pages/Search.tsx"));
 const FlightDetail = lazy(() => import("./pages/FlightDetail.tsx"));
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout.tsx"));
+const DashboardIndex = lazy(() =>
+  import("./pages/dashboard/DashboardLayout.tsx").then((m) => ({ default: m.DashboardIndex })),
+);
+const SavedFlightsPage = lazy(() => import("./pages/dashboard/SavedFlightsPage.tsx"));
+const AgencyListingsPage = lazy(() => import("./pages/dashboard/AgencyListingsPage.tsx"));
+const AdminOverviewPage = lazy(() => import("./pages/dashboard/AdminOverviewPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Explore = lazy(() => import("./pages/Explore.tsx"));
 
@@ -55,10 +61,30 @@ createRoot(document.getElementById("root")!).render(
                     path="/dashboard"
                     element={
                       <RequireAuth>
-                        <Dashboard />
+                        <DashboardLayout />
                       </RequireAuth>
                     }
-                  />
+                  >
+                    <Route index element={<DashboardIndex />} />
+                    <Route path="saved" element={<SavedFlightsPage />} />
+                    <Route
+                      path="agency"
+                      element={
+                        <RequireRole role="agency">
+                          <AgencyListingsPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="admin"
+                      element={
+                        <RequireRole role="admin">
+                          <AdminOverviewPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>

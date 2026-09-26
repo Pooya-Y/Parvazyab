@@ -65,7 +65,7 @@ function AccountMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/dashboard?tab=saved">
+          <Link to="/dashboard/saved">
             <Heart aria-hidden />
             پروازهای ذخیره‌شده
           </Link>
@@ -109,7 +109,7 @@ export function Header() {
             </Button>
             {isAuthenticated && (
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/dashboard?tab=saved">ذخیره‌شده‌ها</Link>
+                <Link to="/dashboard/saved">ذخیره‌شده‌ها</Link>
               </Button>
             )}
           </nav>
