@@ -7,7 +7,8 @@ import { cached } from "../services/redis";
 import { notFound } from "../http/errors";
 import { priceCalendar } from "../services/priceCalendar";
 import { routePriceHistory } from "../services/priceHistory";
-import { airportCode, calendarQuerySchema, routeQuerySchema, searchQuerySchema } from "./schemas";
+import { exploreFrom } from "../services/explore";
+import { airportCode, calendarQuerySchema, exploreQuerySchema, routeQuerySchema, searchQuerySchema } from "./schemas";
 
 const router = Router();
 
@@ -45,6 +46,12 @@ const routeKeySchema = z
   .string()
   .transform((k) => k.split("-"))
   .pipe(z.tuple([airportCode, airportCode]));
+
+/** Destinations from an origin, cheapest first. */
+router.get("/explore", async (req, res) => {
+  const q = exploreQuerySchema.parse(req.query);
+  res.json(await exploreFrom(q.originCode, q.days, q.scope));
+});
 
 const historyDays = z.coerce.number().int().min(7).max(180).default(60);
 

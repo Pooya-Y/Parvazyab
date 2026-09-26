@@ -3,6 +3,7 @@ import { isKnownAirport } from "../domain/airports";
 import { isValidDateKey } from "../domain/time";
 import { SORT_MODES } from "../services/flightsCore";
 import { RANKING_MODES } from "../domain/rankingWeights";
+import { EXPLORE_SCOPES } from "../services/explore";
 
 export const FARE_TYPES = ["scheduled", "charter"] as const;
 
@@ -73,6 +74,12 @@ export const calendarQuerySchema = z
   .superRefine(distinctRoute);
 
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
+
+export const exploreQuerySchema = z.object({
+  originCode: airportCode,
+  days: z.coerce.number().int().min(1).max(60).default(30),
+  scope: z.enum(EXPLORE_SCOPES).default("all"),
+});
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
 
