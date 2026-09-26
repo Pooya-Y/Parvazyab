@@ -12,6 +12,33 @@ export interface Account {
   email: string;
   passwordHash: string;
   agencyName?: string | null;
+  emailVerifiedAt: Date | null;
+  /** Part of every session token; bumping it signs the account out everywhere. */
+  sessionVersion: number;
+  passwordChangedAt: Date | null;
+  createdAt: Date;
+}
+
+export type AuthTokenPurpose = "password_reset" | "email_verify";
+
+export interface AuthToken {
+  id: string;
+  accountId: string;
+  purpose: AuthTokenPurpose;
+  tokenHash: string;
+  expiresAt: Date;
+  consumedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface AuditEntry {
+  id: string;
+  actorId: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  details: Record<string, unknown>;
+  ipHash: string | null;
   createdAt: Date;
 }
 export interface FlightListing {
@@ -76,6 +103,39 @@ export const AccountEntity = new EntitySchema<Account>({
     email: { type: "varchar", length: 320, unique: true },
     passwordHash: { name: "password_hash", type: "varchar", length: 255 },
     agencyName: { name: "agency_name", type: "varchar", length: 120, nullable: true },
+    emailVerifiedAt: { name: "email_verified_at", type: "timestamptz", nullable: true },
+    sessionVersion: { name: "session_version", type: "int", default: 0 },
+    passwordChangedAt: { name: "password_changed_at", type: "timestamptz", nullable: true },
+    createdAt: { name: "created_at", type: "timestamptz", createDate: true },
+  },
+});
+
+export const AuthTokenEntity = new EntitySchema<AuthToken>({
+  name: "AuthToken",
+  tableName: "auth_tokens",
+  columns: {
+    id: { type: "uuid", primary: true, generated: "uuid" },
+    accountId: { name: "account_id", type: "uuid" },
+    purpose: { type: "varchar", length: 32 },
+    tokenHash: { name: "token_hash", type: "char", length: 64 },
+    expiresAt: { name: "expires_at", type: "timestamptz" },
+    consumedAt: { name: "consumed_at", type: "timestamptz", nullable: true },
+    createdAt: { name: "created_at", type: "timestamptz", createDate: true },
+  },
+});
+
+/** bigserial ids come back from node-postgres as strings; keep them that way (they can exceed 2^53). */
+export const AuditEntryEntity = new EntitySchema<AuditEntry>({
+  name: "AuditEntry",
+  tableName: "audit_log",
+  columns: {
+    id: { type: "bigint", primary: true, generated: "increment" },
+    actorId: { name: "actor_id", type: "uuid", nullable: true },
+    action: { type: "varchar", length: 64 },
+    targetType: { name: "target_type", type: "varchar", length: 32, nullable: true },
+    targetId: { name: "target_id", type: "varchar", length: 64, nullable: true },
+    details: { type: "jsonb", default: {} },
+    ipHash: { name: "ip_hash", type: "char", length: 64, nullable: true },
     createdAt: { name: "created_at", type: "timestamptz", createDate: true },
   },
 });

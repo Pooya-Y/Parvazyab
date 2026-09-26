@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { accounts } from "../database/dataSource";
 import { requireRole, requireUser, sanitizeUser, sessionUser } from "../auth/auth";
+import { audit } from "../services/audit";
 import {
   adminStats,
   agencyStats,
@@ -87,7 +88,16 @@ dashboardRoutes.delete("/listings/:id", agencyOnly, async (req, res) => {
 
 dashboardRoutes.post("/become-agency", async (req, res) => {
   const { agencyName } = becomeAgencySchema.parse(req.body);
-  await becomeAgency(sessionUser(res), agencyName);
+  const user = sessionUser(res);
+  if (await becomeAgency(user, agencyName)) {
+    await audit(req, {
+      actorId: user.id,
+      action: "account.became_agency",
+      targetType: "account",
+      targetId: user.id,
+      details: { agencyName },
+    });
+  }
   res.json({ ok: true });
 });
 
@@ -109,6 +119,17 @@ adminRoutes.get("/users", async (_req, res) => {
 
 adminRoutes.patch("/users/:id/role", async (req, res) => {
   const { accountRole } = setRoleSchema.parse(req.body);
-  await setAccountRole(sessionUser(res), uuidParam.parse(req.params.id), accountRole);
+  const actor = sessionUser(res);
+  const targetId = uuidParam.parse(req.params.id);
+  const previous = await setAccountRole(actor, targetId, accountRole);
+  if (previous !== accountRole) {
+    await audit(req, {
+      actorId: actor.id,
+      action: "admin.role_changed",
+      targetType: "account",
+      targetId,
+      details: { from: previous, to: accountRole },
+    });
+  }
   res.json({ ok: true });
 });

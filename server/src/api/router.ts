@@ -4,6 +4,7 @@ import { cacheStatus } from "../services/redis";
 import { apiNotFound } from "../http/errors";
 import searchRoutes from "./searchRoutes";
 import authRoutes from "./authRoutes";
+import accountSettingsRoutes from "./accountSettingsRoutes";
 import { adminRoutes, dashboardRoutes, savedFlightRoutes } from "./accountRoutes";
 
 const router = Router();
@@ -24,6 +25,7 @@ router.get("/health", async (_req, res) => {
 
 router.use("/", searchRoutes);
 router.use("/auth", authRoutes);
+router.use("/account", accountSettingsRoutes);
 router.use("/saved-flights", savedFlightRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/admin", adminRoutes);

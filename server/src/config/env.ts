@@ -10,6 +10,9 @@ const envFlag = z
   .default("false")
   .transform((v) => v === "true" || v === "1");
 
+/** Compose passes unset variables through as empty strings; treat those as unset. */
+const blankAsUnset = (value: unknown) => (value === "" ? undefined : value);
+
 const PLACEHOLDER_SECRETS = [
   "change-this-development-secret-please-32",
   "replace-with-at-least-32-random-characters",
@@ -27,6 +30,13 @@ const envSchema = z.object({
   COOKIE_SECURE: envFlag,
   /** Insert demo agencies/flights on startup (idempotent). */
   SEED_DEMO_DATA: envFlag,
+  /** Public origin of the web app, used in links sent by email. */
+  APP_URL: z.preprocess(blankAsUnset, z.string().url().default("http://localhost:8080")),
+  /** console = log mail (links only outside production); smtp = send via SMTP_URL; memory = tests only. */
+  MAIL_TRANSPORT: z.preprocess(blankAsUnset, z.enum(["console", "smtp", "memory"]).default("console")),
+  /** e.g. smtps://user:pass@smtp.example.com:465 */
+  SMTP_URL: z.preprocess(blankAsUnset, z.string().url().optional()),
+  MAIL_FROM: z.preprocess(blankAsUnset, z.string().default("پروازیاب <no-reply@parvazyab.example>")),
   /** Optional bootstrap admin account, created on startup if missing. */
   ADMIN_EMAIL: z
     .string()
@@ -46,6 +56,10 @@ export function parseConfig(env: NodeJS.ProcessEnv): Config {
   const parsed = envSchema.parse(env);
   if (parsed.NODE_ENV === "production" && PLACEHOLDER_SECRETS.includes(parsed.JWT_SECRET)) {
     throw new Error("JWT_SECRET must be set to a unique random value in production");
+  }
+  if (parsed.MAIL_TRANSPORT === "smtp" && !parsed.SMTP_URL) throw new Error("MAIL_TRANSPORT=smtp requires SMTP_URL");
+  if (parsed.MAIL_TRANSPORT === "memory" && parsed.NODE_ENV !== "test") {
+    throw new Error("MAIL_TRANSPORT=memory is only for tests");
   }
   return parsed;
 }

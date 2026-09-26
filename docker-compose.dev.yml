@@ -11,3 +11,7 @@ services:
   redis:
     ports:
       - "127.0.0.1:${DEV_REDIS_PORT:-56379}:6379"
+  # SMTP for `npm run dev:server` (SMTP_URL=smtp://127.0.0.1:1025); only with --profile mail.
+  mailpit:
+    ports:
+      - "127.0.0.1:${DEV_SMTP_PORT:-1025}:1025"

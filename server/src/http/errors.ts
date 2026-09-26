@@ -9,6 +9,8 @@ export class HttpError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
+    /** Sent with the error response, e.g. Retry-After on a 429. */
+    readonly headers?: Record<string, string>,
   ) {
     super(code);
     this.name = "HttpError";
@@ -30,6 +32,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
   if (err instanceof HttpError) {
+    if (err.headers) res.set(err.headers);
     res.status(err.status).json({ error: err.code });
     return;
   }

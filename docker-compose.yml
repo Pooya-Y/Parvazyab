@@ -10,6 +10,10 @@ x-app-environment: &app-environment
   SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
   ADMIN_EMAIL: ${ADMIN_EMAIL:-}
   ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+  APP_URL: ${APP_URL:-http://localhost:8080}
+  MAIL_TRANSPORT: ${MAIL_TRANSPORT:-console}
+  SMTP_URL: ${SMTP_URL:-}
+  MAIL_FROM: ${MAIL_FROM:-}
 
 services:
   postgres:
@@ -83,6 +87,16 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Opt-in mail catcher for trying the email flows locally:
+  #   docker compose --profile mail up -d
+  # with MAIL_TRANSPORT=smtp and SMTP_URL=smtp://mailpit:1025 in .env; the inbox is at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31
+    profiles: ["mail"]
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
     restart: unless-stopped
 
 volumes:

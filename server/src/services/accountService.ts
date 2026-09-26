@@ -161,9 +161,11 @@ export async function agencyStats(accountId: string) {
   };
 }
 
-export async function becomeAgency(user: Account, agencyName: string) {
-  if (user.role !== "user") return;
+/** Returns whether the account changed (agencies and admins are left as they are). */
+export async function becomeAgency(user: Account, agencyName: string): Promise<boolean> {
+  if (user.role !== "user") return false;
   await accounts().update({ id: user.id }, { role: "agency", agencyName });
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -215,10 +217,12 @@ export async function adminStats() {
   };
 }
 
+/** Returns the previous role. */
 export async function setAccountRole(actor: Account, targetId: string, role: "user" | "agency") {
   if (actor.id === targetId) throw new HttpError(400, "CANNOT_CHANGE_OWN_ROLE");
   const target = await accounts().findOne({ where: { id: targetId } });
   if (!target) throw notFound();
   if (target.role === "admin") throw new HttpError(403, "CANNOT_CHANGE_ADMIN");
   await accounts().update({ id: targetId }, { role });
+  return target.role;
 }

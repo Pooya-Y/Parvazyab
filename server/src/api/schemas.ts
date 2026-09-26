@@ -83,16 +83,32 @@ export const exploreQuerySchema = z.object({
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
 
+const emailField = z.string().trim().toLowerCase().email().max(320);
+const nameField = z.string().trim().min(2).max(120);
+/** For new passwords only; sign-in accepts whatever was allowed when the password was set. */
+const newPasswordField = z.string().min(8).max(128);
+/** Emailed tokens are 43 base64url characters; the bound only stops oversized input early. */
+const tokenField = z.string().min(1).max(128);
+
 export const registerSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  email: z.string().trim().toLowerCase().email().max(320),
-  password: z.string().min(8).max(128),
+  name: nameField,
+  email: emailField,
+  password: newPasswordField,
 });
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(320),
+  email: emailField,
   password: z.string().min(1).max(128),
 });
+
+export const forgotPasswordSchema = z.object({ email: emailField });
+export const resetPasswordSchema = z.object({ token: tokenField, password: newPasswordField });
+export const verifyEmailSchema = z.object({ token: tokenField });
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: newPasswordField,
+});
+export const profileSchema = z.object({ name: nameField });
 
 const epochMs = z.number().int().nonnegative();
 const cabin = z.enum(["economy", "business"]);

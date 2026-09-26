@@ -22,9 +22,15 @@ async function ensureAccount(
   password: string,
 ) {
   const repo = accounts();
+  // Seeded addresses are configuration, not sign-ups: nobody could click a verification link for them.
   const existing = await repo.findOne({ where: { email } });
-  if (existing) return existing;
-  return repo.save(repo.create({ email, ...fields, passwordHash: await hashPassword(password) }));
+  if (existing) {
+    if (!existing.emailVerifiedAt) await repo.update(existing.id, { emailVerifiedAt: new Date() });
+    return existing;
+  }
+  return repo.save(
+    repo.create({ email, ...fields, passwordHash: await hashPassword(password), emailVerifiedAt: new Date() }),
+  );
 }
 
 /**
