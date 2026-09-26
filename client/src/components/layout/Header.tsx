@@ -35,8 +35,7 @@ function AccountMenu() {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      navigate("/");
+      await signOut(() => navigate("/"));
     } catch {
       toast.error("خروج انجام نشد. دوباره تلاش کنید.");
     }
