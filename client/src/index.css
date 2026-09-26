@@ -34,7 +34,7 @@
  * advantages (cheapest offer) so it never competes with the red call-to-action.
  */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --background: oklch(0.985 0.003 25);
   --foreground: oklch(0.2 0.02 25);
   --card: oklch(1 0 0);

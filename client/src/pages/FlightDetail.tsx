@@ -61,8 +61,8 @@ export default function FlightDetail() {
         <div role="status" aria-label="در حال بارگذاری جزئیات پرواز">
           <Skeleton className="h-5 w-40" />
           <Skeleton className="mt-5 h-8 w-64" />
-          <Skeleton className="mt-4 h-44 w-full rounded-xl" />
-          <Skeleton className="mt-4 h-32 w-full rounded-xl" />
+          <Skeleton className="mt-4 h-44 w-full rounded-lg" />
+          <Skeleton className="mt-4 h-32 w-full rounded-lg" />
         </div>
       </PageShell>
     );
@@ -145,7 +145,7 @@ export default function FlightDetail() {
         ) : null}
       </div>
 
-      <section className="mt-5 rounded-xl border bg-card p-4 sm:p-6" aria-label="برنامه پرواز">
+      <section className="mt-5 rounded-lg border bg-card p-4 sm:p-6" aria-label="برنامه پرواز">
         <FlightTimeline flight={flight} size="lg" />
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t pt-4">
           <Badge variant="secondary">{flight.cabin === "business" ? "بیزینس" : "اکونومی"}</Badge>
@@ -174,7 +174,7 @@ export default function FlightDetail() {
           <Building2 className="size-5 text-primary" aria-hidden />
           قیمت در {toFaDigits(flight.agencyCount)} آژانس
         </h2>
-        <ul className="mt-3 divide-y overflow-hidden rounded-xl border bg-card">
+        <ul className="mt-3 divide-y overflow-hidden rounded-lg border bg-card">
           {flight.offers.map((o, i) => {
             const url = safeExternalUrl(o.bookingUrl);
             return (

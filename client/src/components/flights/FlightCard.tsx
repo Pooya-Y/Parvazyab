@@ -99,7 +99,7 @@ export function FlightCard({
     <article
       aria-labelledby={headingId}
       className={cn(
-        "rounded-xl border bg-card transition-shadow hover:shadow-sm",
+        "rounded-lg border bg-card transition-shadow hover:shadow-sm",
         recommended && "border-primary/45 ring-1 ring-primary/15",
       )}
     >

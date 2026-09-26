@@ -70,7 +70,7 @@ export function SearchWidget({
   };
 
   return (
-    <div className={cn("rounded-xl border bg-card shadow-sm", compact ? "p-3" : "p-3 sm:p-4")}>
+    <div className={cn("rounded-lg border bg-card shadow-sm", compact ? "p-3" : "p-3 sm:p-4")}>
       {compact && (
         <div className={cn("flex items-center justify-between gap-3 md:hidden", expanded && "mb-3")}>
           <div className="min-w-0">

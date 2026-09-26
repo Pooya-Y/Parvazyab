@@ -18,7 +18,7 @@ function PopularRoutes() {
     return (
       <div className="flex flex-wrap justify-center gap-2" aria-hidden>
         {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-9 w-32 rounded-full" />
+          <Skeleton key={i} className="h-9 w-32 rounded-md" />
         ))}
       </div>
     );
@@ -33,7 +33,7 @@ function PopularRoutes() {
         <Link
           key={`${r.originCode}-${r.destinationCode}`}
           to={searchUrl({ from: r.originCode, to: r.destinationCode })}
-          className="inline-flex min-h-9 items-center rounded-full border bg-card px-3.5 text-sm transition-colors hover:border-primary/40 hover:bg-accent"
+          className="inline-flex min-h-9 items-center rounded-md border bg-card px-3.5 text-sm transition-colors hover:border-primary/40 hover:bg-accent"
         >
           {airportShortCity(r.originCode)}
           <ArrowLeft className="mx-1.5 size-3.5 text-muted-foreground" aria-hidden />
@@ -115,7 +115,7 @@ export default function Landing() {
         </h2>
         <ol className="mt-8 grid gap-4 sm:grid-cols-3 sm:gap-6">
           {STEPS.map((s, i) => (
-            <li key={s.title} className="rounded-xl border bg-card p-5">
+            <li key={s.title} className="rounded-lg border bg-card p-5">
               <span className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-sm font-bold text-primary">
                 {toFaDigits(i + 1)}
               </span>
@@ -146,7 +146,7 @@ export default function Landing() {
       </section>
 
       <section className="container-page py-12 sm:py-16" aria-labelledby="agency-heading">
-        <div className="flex flex-col items-start justify-between gap-6 rounded-xl border bg-card p-6 sm:p-8 md:flex-row md:items-center">
+        <div className="flex flex-col items-start justify-between gap-6 rounded-lg border bg-card p-6 sm:p-8 md:flex-row md:items-center">
           <div className="max-w-xl">
             <h2 id="agency-heading" className="text-xl font-bold sm:text-2xl">
               آژانس مسافرتی دارید؟

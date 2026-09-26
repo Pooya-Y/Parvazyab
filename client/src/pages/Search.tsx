@@ -216,7 +216,7 @@ function SearchResults({
 
   return (
     <div className="container-page py-4 md:py-6 lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-6">
-      <aside className="hidden rounded-xl border bg-card p-4 lg:sticky lg:top-20 lg:block" aria-label="فیلتر نتایج">
+      <aside className="hidden rounded-lg border bg-card p-4 lg:sticky lg:top-20 lg:block" aria-label="فیلتر نتایج">
         <SearchFilters facets={facets.data} filters={state} onChange={onChange} />
       </aside>
 
@@ -245,7 +245,7 @@ function SearchResults({
                   ) : null}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[85dvh] gap-0 rounded-t-2xl">
+              <SheetContent side="bottom" className="max-h-[85dvh] gap-0 rounded-t-xl">
                 <SheetHeader className="border-b pb-3">
                   <SheetTitle>فیلتر نتایج</SheetTitle>
                   <SheetDescription className="sr-only">تغییرات بلافاصله روی نتایج اعمال می‌شود.</SheetDescription>

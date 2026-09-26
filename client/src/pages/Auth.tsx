@@ -115,7 +115,7 @@ export default function AuthPage() {
       </header>
 
       <main id="main" className="flex flex-1 items-start justify-center px-4 py-8 sm:items-center sm:py-12">
-        <div className="w-full max-w-md rounded-xl border bg-card shadow-sm">
+        <div className="w-full max-w-md rounded-lg border bg-card shadow-sm">
           <div className="border-b px-6 py-5 text-center">
             <h1 className="text-xl font-bold">{tab === "signup" ? "ساخت حساب پروازیاب" : "ورود به پروازیاب"}</h1>
             <p className="mt-1 text-sm text-muted-foreground">

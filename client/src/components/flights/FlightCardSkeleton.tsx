@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function FlightCardSkeleton() {
   return (
     <div
-      className="grid gap-4 rounded-xl border bg-card p-4 md:grid-cols-[minmax(0,1fr)_13rem] md:gap-6 md:p-5"
+      className="grid gap-4 rounded-lg border bg-card p-4 md:grid-cols-[minmax(0,1fr)_13rem] md:gap-6 md:p-5"
       aria-hidden
     >
       <div className="space-y-4">

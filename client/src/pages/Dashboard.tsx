@@ -96,7 +96,7 @@ function StatBox({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
+    <div className="rounded-lg border bg-card p-4">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Icon className="size-3.5" aria-hidden />
         {label}
@@ -133,7 +133,7 @@ function SavedFlightsTab() {
     return (
       <div className="grid gap-3 sm:grid-cols-2" aria-hidden>
         {[0, 1].map((i) => (
-          <Skeleton key={i} className="h-28 rounded-xl" />
+          <Skeleton key={i} className="h-28 rounded-lg" />
         ))}
       </div>
     );
@@ -159,7 +159,7 @@ function SavedFlightsTab() {
       {list.map((f) => {
         const departed = f.departAt < now;
         return (
-          <li key={f.id} className={cn("rounded-xl border bg-card p-4", departed && "opacity-70")}>
+          <li key={f.id} className={cn("rounded-lg border bg-card p-4", departed && "opacity-70")}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-semibold">
@@ -264,7 +264,7 @@ function AgencyTab() {
     content = (
       <div className="space-y-2" aria-hidden>
         {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-20 rounded-xl" />
+          <Skeleton key={i} className="h-20 rounded-lg" />
         ))}
       </div>
     );
@@ -278,7 +278,7 @@ function AgencyTab() {
     );
   else
     content = (
-      <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+      <ul className="divide-y overflow-hidden rounded-lg border bg-card">
         {listings.data.map((l) => {
           const url = safeExternalUrl(l.bookingUrl);
           return (
@@ -290,7 +290,7 @@ function AgencyTab() {
                   </span>
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                      "rounded-md px-2 py-0.5 text-[11px] font-medium",
                       l.isActive ? "bg-success/10 text-success" : "bg-muted text-muted-foreground",
                     )}
                   >
@@ -462,8 +462,8 @@ function AdminTab({ currentUserId }: { currentUserId: string }) {
   if (!stats.data || !users.data) {
     return (
       <div className="space-y-3" aria-hidden>
-        <Skeleton className="h-24 rounded-xl" />
-        <Skeleton className="h-48 rounded-xl" />
+        <Skeleton className="h-24 rounded-lg" />
+        <Skeleton className="h-48 rounded-lg" />
       </div>
     );
   }
@@ -483,7 +483,7 @@ function AdminTab({ currentUserId }: { currentUserId: string }) {
           <h2 id="top-routes" className="mb-2 font-bold">
             مسیرهای پرپرواز
           </h2>
-          <ul className="divide-y rounded-xl border bg-card">
+          <ul className="divide-y rounded-lg border bg-card">
             {s.topRoutes.map((r) => {
               const [from, to] = r.route.split("-");
               return (
@@ -505,7 +505,7 @@ function AdminTab({ currentUserId }: { currentUserId: string }) {
         <h2 id="users-heading" className="mb-2 font-bold">
           کاربران
         </h2>
-        <div className="overflow-x-auto rounded-xl border bg-card">
+        <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full min-w-[32rem] text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>
@@ -530,7 +530,7 @@ function AdminTab({ currentUserId }: { currentUserId: string }) {
                     </td>
                     <td className="p-3">
                       {locked ? (
-                        <span className="rounded-full bg-muted px-2.5 py-1 text-xs">{ROLE_LABEL[u.role]}</span>
+                        <span className="rounded-md bg-muted px-2.5 py-1 text-xs">{ROLE_LABEL[u.role]}</span>
                       ) : (
                         <Select
                           value={u.accountRole}
@@ -588,7 +588,7 @@ function BecomeAgencyCard({ onUpgraded }: { onUpgraded: () => void }) {
   };
 
   return (
-    <section className="mt-8 rounded-xl border border-dashed p-5 sm:p-6" aria-labelledby="become-agency">
+    <section className="mt-8 rounded-lg border border-dashed p-5 sm:p-6" aria-labelledby="become-agency">
       <h2 id="become-agency" className="flex items-center gap-2 font-semibold">
         <Store className="size-4 text-primary" aria-hidden />
         آژانس مسافرتی دارید؟
