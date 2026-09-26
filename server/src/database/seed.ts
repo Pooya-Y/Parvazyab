@@ -64,6 +64,48 @@ export async function seedDemoData(now = Date.now()) {
   if (inserted) console.log(`Seeded ${inserted} demo flights`);
   const history = await backfillDemoHistory(now);
   if (history) console.log(`Seeded ${history} demo price-history days`);
+  const clicks = await backfillDemoClicks(agencyIds);
+  if (clicks) console.log(`Seeded ${clicks} demo outbound clicks`);
+}
+
+/**
+ * A few weeks of "buy" clicks on the demo agencies' upcoming flights, so their
+ * analytics page has something to show. Only for an agency with no clicks yet;
+ * cheaper fares get clicked more, as they would.
+ */
+async function backfillDemoClicks(agencyIds: string[]): Promise<number> {
+  let inserted = 0;
+  for (const agencyId of agencyIds) {
+    const [{ any }] = (await AppDataSource.query(
+      `SELECT EXISTS (SELECT 1 FROM listing_clicks WHERE agency_id = $1) AS any`,
+      [agencyId],
+    )) as { any: boolean }[];
+    if (any) continue;
+    const rows = (await AppDataSource.query(
+      `WITH ranked AS (
+         SELECT l.*, percent_rank() OVER (PARTITION BY origin_code, destination_code ORDER BY price_toman) AS pr
+           FROM flight_listings l
+          WHERE l.account_id = $1 AND l.is_active AND l.depart_at > now()
+       )
+       INSERT INTO listing_clicks (listing_id, agency_id, origin_code, destination_code, airline, flight_no,
+                                   depart_at, price_toman, source, visitor_hash, created_at)
+       SELECT r.id, r.account_id, r.origin_code, r.destination_code, r.airline, r.flight_no, r.depart_at,
+              r.price_toman,
+              (ARRAY['search', 'search', 'search', 'detail', 'roundtrip'])[1 + floor(random() * 5)::int],
+              -- A pool of returning visitors, so unique visitors come out below clicks.
+              v.id || v.id,
+              -- Somewhere in the three weeks before departure, never in the future.
+              r.depart_at - interval '21 days' + random() * (LEAST(now(), r.depart_at) - (r.depart_at - interval '21 days'))
+         FROM ranked r
+        CROSS JOIN LATERAL generate_series(1, 1 + floor((1 - r.pr) * 6 * random())::int) AS g
+        CROSS JOIN LATERAL (SELECT md5('demo-visitor-' || floor(random() * 250)::int || g) AS id) AS v
+        WHERE r.depart_at - interval '21 days' < now()
+       RETURNING 1`,
+      [agencyId],
+    )) as unknown[];
+    inserted += rows.length;
+  }
+  return inserted;
 }
 
 const DEMO_HISTORY_DAYS = 60;
