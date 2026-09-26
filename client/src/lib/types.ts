@@ -148,6 +148,54 @@ export interface User {
   createdAt: string;
 }
 
+export interface PriceAlert {
+  id: string;
+  originCode: string;
+  destinationCode: string;
+  /** Iran calendar days (`yyyy-mm-dd`), inclusive; both null = any date in the next 30 days. */
+  dateFrom: string | null;
+  dateTo: string | null;
+  cabin: "economy" | "business" | null;
+  /** Notify at or below this fare; null = on any real drop (3%+). */
+  targetPrice: number | null;
+  /** The lowest fare when the alert was made. */
+  baselinePrice: number | null;
+  /** The lowest fare at the last check. */
+  lastPrice: number | null;
+  lastCheckedAt: number | null;
+  lastNotifiedPrice: number | null;
+  lastNotifiedAt: number | null;
+  notifyEmail: boolean;
+  isActive: boolean;
+  createdAt: number;
+}
+
+export interface PriceAlertInput {
+  originCode: string;
+  destinationCode: string;
+  dateFrom?: string;
+  dateTo?: string;
+  cabin?: "economy" | "business";
+  targetPrice?: number;
+  notifyEmail: boolean;
+}
+
+export interface AppNotification {
+  id: string;
+  kind: "price_drop";
+  title: string;
+  body: string;
+  /** In-app path. */
+  link: string | null;
+  read: boolean;
+  createdAt: number;
+}
+
+export interface Inbox {
+  items: AppNotification[];
+  unreadCount: number;
+}
+
 /** A one-time code on its way to a phone. */
 export interface OtpChallenge {
   challengeId: string;

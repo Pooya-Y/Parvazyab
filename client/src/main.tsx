@@ -25,6 +25,8 @@ const SavedFlightsPage = lazy(() => import("./pages/dashboard/SavedFlightsPage.t
 const AgencyListingsPage = lazy(() => import("./pages/dashboard/AgencyListingsPage.tsx"));
 const AdminOverviewPage = lazy(() => import("./pages/dashboard/AdminOverviewPage.tsx"));
 const AccountPage = lazy(() => import("./pages/dashboard/AccountPage.tsx"));
+const AlertsPage = lazy(() => import("./pages/dashboard/AlertsPage.tsx"));
+const AlertUnsubscribe = lazy(() => import("./pages/AlertUnsubscribe.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Explore = lazy(() => import("./pages/Explore.tsx"));
 
@@ -64,6 +66,7 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="/auth/forgot" element={<ForgotPassword />} />
                   <Route path="/auth/reset" element={<ResetPassword />} />
                   <Route path="/auth/verify-email" element={<VerifyEmail />} />
+                  <Route path="/alerts/unsubscribe" element={<AlertUnsubscribe />} />
                   <Route
                     path="/dashboard"
                     element={
@@ -74,6 +77,7 @@ createRoot(document.getElementById("root")!).render(
                   >
                     <Route index element={<DashboardIndex />} />
                     <Route path="saved" element={<SavedFlightsPage />} />
+                    <Route path="alerts" element={<AlertsPage />} />
                     <Route path="account" element={<AccountPage />} />
                     <Route
                       path="agency"

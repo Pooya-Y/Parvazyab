@@ -5,6 +5,7 @@ import { FlightCard } from "@/components/flights/FlightCard";
 import { StateMessage } from "@/components/StateMessage";
 import { Button } from "@/components/ui/button";
 import { ShareButton } from "@/components/ShareButton";
+import { PriceAlertButton } from "@/components/alerts/PriceAlertButton";
 import { RoutePriceTrend } from "@/components/charts/RoutePriceTrend";
 import { airportShortCity } from "@/domain/airports";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +26,7 @@ export function OneWayResults({
   const saved = useSavedFlights();
   const data = useLegResults(state, "out");
   const flights = data.results.data ?? [];
+  const lowest = flights.length ? Math.min(...flights.map((f) => f.bestPriceToman)) : null;
 
   const noFlights = (
     <StateMessage
@@ -65,6 +67,14 @@ export function OneWayResults({
           <div className="flex w-full items-center gap-2 sm:w-auto">
             <FiltersSheetButton data={data} onChange={onChange} />
             <SortSelect value={state.sort} onChange={(sort) => onChange({ sort })} />
+            <PriceAlertButton
+              compact
+              originCode={state.from}
+              destinationCode={state.to}
+              date={state.date}
+              cabin={state.cabin}
+              lowestPrice={lowest}
+            />
             <ShareButton
               compact
               label="اشتراک‌گذاری این جستجو"

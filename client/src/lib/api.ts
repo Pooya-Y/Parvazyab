@@ -8,8 +8,11 @@ import type {
   PriceHistory,
   ExploreResult,
   ExploreScope,
+  Inbox,
   OtpChallenge,
   PopularRoute,
+  PriceAlert,
+  PriceAlertInput,
   SavedFlight,
   SearchFacets,
   SearchParams,
@@ -180,6 +183,25 @@ export const api = {
     deleteListing: (id: string) => request<void>(`/dashboard/listings/${encodeURIComponent(id)}`, { method: "DELETE" }),
     becomeAgency: (agencyName: string) =>
       request<{ ok: true }>("/dashboard/become-agency", { method: "POST", body: { agencyName } }),
+  },
+
+  alerts: {
+    list: (signal?: AbortSignal) => request<PriceAlert[]>("/alerts", { signal }),
+    create: (input: PriceAlertInput) => request<PriceAlert>("/alerts", { method: "POST", body: input }),
+    update: (id: string, patch: { isActive?: boolean; targetPrice?: number | null; notifyEmail?: boolean }) =>
+      request<PriceAlert>(`/alerts/${encodeURIComponent(id)}`, { method: "PATCH", body: patch }),
+    remove: (id: string) => request<void>(`/alerts/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    /** From the link in an alert email; the signature is the permission, no session needed. */
+    unsubscribe: (id: string, sig: string) =>
+      request<{ ok: true }>(`/alerts/${encodeURIComponent(id)}/unsubscribe`, { method: "POST", query: { sig } }),
+  },
+
+  notifications: {
+    list: (limit = 20, signal?: AbortSignal) => request<Inbox>("/notifications", { query: { limit }, signal }),
+    unreadCount: (signal?: AbortSignal) => request<{ count: number }>("/notifications/unread-count", { signal }),
+    /** Marks the given notifications, or all of them, read; returns what is still unread. */
+    markRead: (ids?: string[]) =>
+      request<{ unreadCount: number }>("/notifications/read", { method: "POST", body: ids ? { ids } : {} }),
   },
 
   admin: {

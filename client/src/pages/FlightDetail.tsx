@@ -6,6 +6,7 @@ import { StateMessage } from "@/components/StateMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShareButton } from "@/components/ShareButton";
+import { PriceAlertButton } from "@/components/alerts/PriceAlertButton";
 import { RoutePriceTrend } from "@/components/charts/RoutePriceTrend";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, safeExternalUrl } from "@/lib/api";
@@ -13,6 +14,7 @@ import { errorMessage } from "@/lib/errors";
 import { useApiQuery } from "@/lib/use-api-query";
 import { isKnownAirport } from "@/domain/airports";
 import {
+  epochToDateKey,
   formatJalaliWeekday,
   formatPrice,
   formatTime,
@@ -140,6 +142,14 @@ export default function FlightDetail() {
             text={`${flight.airline} ${flight.originCity} به ${flight.destinationCity}، ${formatJalaliWeekday(
               flight.departAt,
             )} ساعت ${formatTime(flight.departAt)}، از ${formatPrice(flight.bestPriceToman)} در پروازیاب`}
+          />
+          <PriceAlertButton
+            compact
+            originCode={flight.originCode}
+            destinationCode={flight.destinationCode}
+            date={epochToDateKey(flight.departAt)}
+            cabin={flight.cabin}
+            lowestPrice={flight.bestPriceToman}
           />
           {isAuthenticated ? (
             <Button

@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "@/components/alerts/NotificationBell";
 import { useAuth } from "@/hooks/use-auth";
 import { ChevronDown, Heart, LayoutDashboard, LogIn, LogOut, Plane, UserCog, UserRound } from "lucide-react";
 import { isGuest } from "@/lib/account";
@@ -125,6 +126,7 @@ export function Header() {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <ThemeToggle />
+          {isAuthenticated ? <NotificationBell /> : null}
           {isLoading ? (
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted" aria-hidden />
           ) : isAuthenticated ? (

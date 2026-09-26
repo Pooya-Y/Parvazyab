@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useSearchParams } from "react-router";
-import { Heart, Info, MailWarning, ShieldCheck, Store, UserCog } from "lucide-react";
+import { BellRing, Heart, Info, MailWarning, ShieldCheck, Store, UserCog } from "lucide-react";
 import { ResendVerificationButton } from "@/components/auth/ResendVerificationButton";
 import { PageShell } from "@/components/layout/PageShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +25,7 @@ function navFor(user: User): NavGroup[] {
       label: "حساب من",
       items: [
         { to: "/dashboard/saved", label: "پروازهای ذخیره‌شده", icon: Heart },
+        { to: "/dashboard/alerts", label: "هشدارهای قیمت", icon: BellRing },
         { to: "/dashboard/account", label: "تنظیمات حساب", icon: UserCog },
       ],
     },

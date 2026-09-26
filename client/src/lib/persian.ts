@@ -336,6 +336,18 @@ export function relativeDayLabel(date: string | number, now = Date.now()): strin
   return null;
 }
 
+/** "همین حالا", "۵ دقیقه پیش", "۳ ساعت پیش", "دیروز", else the date: for notifications and the like. */
+export function formatRelativeTime(epochMs: number, now = Date.now()): string {
+  const minutes = Math.floor((now - epochMs) / 60_000);
+  if (minutes < 1) return "همین حالا";
+  if (minutes < 60) return `${toFaDigits(minutes)} دقیقه پیش`;
+  if (minutes < 24 * 60 && epochToDateKey(epochMs) === epochToDateKey(now)) {
+    return `${toFaDigits(Math.floor(minutes / 60))} ساعت پیش`;
+  }
+  if (dayDiff(epochToDateKey(epochMs), epochToDateKey(now)) === 1) return "دیروز";
+  return formatJalaliDate(epochMs);
+}
+
 /** Whole days between the departure and arrival calendar dates (Tehran), e.g. +1 for red-eyes. */
 export function arrivalDayOffset(departAt: number, arriveAt: number): number {
   return dayDiff(epochToDateKey(departAt), epochToDateKey(arriveAt));
