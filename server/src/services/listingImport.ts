@@ -195,7 +195,8 @@ export function csvToRows(text: string): ImportRow[] {
     const isActive = activeText === "" || TRUE.has(activeText) ? true : FALSE.has(activeText) ? false : null;
     if (isActive === null) errors.push("active: INVALID_BOOLEAN");
 
-    if (errors.length) return { ref: line, errors };
+    // Cells that didn't parse are left empty; the other fields are still validated,
+    // so a row reports all of its problems at once.
     return {
       ref: line,
       errors,
@@ -283,8 +284,15 @@ export async function planImport(
   const checked = rows.map((row) => {
     if (!row.input) return { row, errors: row.errors };
     const parsed = listingSchema.safeParse(row.input);
-    if (!parsed.success) {
-      return { row, errors: parsed.error.issues.map((i) => `${name(i.path)}: ${issueCode(i)}`) };
+    if (row.errors.length || !parsed.success) {
+      // A field that already failed to parse isn't reported again by the schema.
+      const failed = new Set(row.errors.map((e) => e.split(": ")[0]));
+      const schemaErrors = parsed.success
+        ? []
+        : parsed.error.issues
+            .map((i) => `${name(i.path)}: ${issueCode(i)}`)
+            .filter((e) => !failed.has(e.split(": ")[0]));
+      return { row, errors: [...row.errors, ...schemaErrors] };
     }
     let columns: ListingColumns;
     try {

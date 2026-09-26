@@ -65,6 +65,8 @@ describe("CSV import and export", { skip }, () => {
       `THR,MHD,ماهان ایر,W5-3,${day(-2)} 08:30,${day(-2)} 10:00,0,economy,scheduled,2450000,https://agency.example/5,true`,
       `THR,MHD,ماهان ایر,W5-1071,${day(5)} 08:30,${day(5)} 10:00,0,economy,scheduled,2400000,https://agency.example/6,true`,
       `THR,MHD,ماهان ایر,W5-4,${day(5)} 08:30,${day(5)} 07:00,0,economy,scheduled,2450000,javascript:alert(1),true`,
+      // Several problems in one row are all reported at once.
+      `TBZ,THR,ایران ایر,IR-5,${day(5)} 07:00,${day(5)} 08:20,0,first,scheduled,2100000,ftp://agency.example,true`,
     );
     const res = await upload(file);
     assert.equal(res.status, 200);
@@ -77,7 +79,8 @@ describe("CSV import and export", { skip }, () => {
     assert.deepEqual(byLine[6].errors, ["depart: DEPARTURE_IN_PAST"]);
     assert.deepEqual(byLine[7].errors, ["flight_no: DUPLICATE_ROW"], "the same flight twice in one file");
     assert.deepEqual(byLine[8].errors, ["booking_url: INVALID_BOOKING_URL"]);
-    assert.deepEqual(res.body.counts, { create: 2, update: 0, unchanged: 0, error: 5 });
+    assert.deepEqual(byLine[9].errors, ["cabin: INVALID_CABIN", "booking_url: INVALID_BOOKING_URL"]);
+    assert.deepEqual(res.body.counts, { create: 2, update: 0, unchanged: 0, error: 6 });
     assert.equal(await flightListings().count(), 0, "a preview writes nothing");
   });
 
