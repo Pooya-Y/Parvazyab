@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "start": "node dist/server.js",
     "seed": "tsx src/database/seed.ts",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "test:int": "tsx --test --test-concurrency=1 \"src/**/*.int.ts\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

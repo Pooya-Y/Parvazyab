@@ -1,0 +1,13 @@
+# Development override: publishes Postgres and Redis on localhost so `npm run dev:server`,
+# `npm run dev:worker` and the integration tests can reach them.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis
+#
+# Ports default to 55432/56379 to avoid clashing with locally installed servers.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${DEV_POSTGRES_PORT:-55432}:5432"
+  redis:
+    ports:
+      - "127.0.0.1:${DEV_REDIS_PORT:-56379}:6379"
