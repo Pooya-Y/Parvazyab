@@ -13,6 +13,68 @@ export interface FlightOffer {
   fareType: FareType;
   priceToman: number;
   bookingUrl: string;
+  /** The agency's public profile (/agencies/:slug), verification and rating. */
+  agencySlug?: string | null;
+  agencyVerified?: boolean;
+  agencyRating?: AgencyRating | null;
+}
+
+export interface AgencyRating {
+  /** One decimal. */
+  average: number;
+  count: number;
+}
+
+export interface AgencySummary {
+  slug: string;
+  name: string;
+  city: string | null;
+  verified: boolean;
+  rating: AgencyRating | null;
+  /** Upcoming flights on sale. */
+  listings: number;
+}
+
+export interface AgencyProfile {
+  agencyId: string;
+  slug: string;
+  name: string;
+  description: string;
+  website: string | null;
+  supportPhone: string | null;
+  city: string | null;
+  licenseNo: string | null;
+  verified: boolean;
+  /** Epoch ms the agency joined. */
+  since: number;
+  rating: { average: number | null; count: number; histogram: [number, number, number, number, number] };
+  routes: { originCode: string; destinationCode: string; minPrice: number; flights: number }[];
+}
+
+export interface AgencyReview {
+  id: string;
+  rating: number;
+  body: string;
+  /** Shortened: "سارا ک." */
+  author: string;
+  mine: boolean;
+  edited: boolean;
+  reply: string | null;
+  repliedAt: number | null;
+  createdAt: number;
+  /** Only on the author's own review and in the agency's dashboard. */
+  hidden?: boolean;
+}
+
+export interface OwnAgencyProfile {
+  slug: string;
+  name: string;
+  description: string;
+  website: string | null;
+  supportPhone: string | null;
+  city: string | null;
+  licenseNo: string | null;
+  verified: boolean;
 }
 
 export interface ExplanationReason {

@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useSearchParams } from "react-router";
 import {
   BellRing,
+  Building2,
   ChartColumn,
   FileSpreadsheet,
   Heart,
@@ -45,6 +46,7 @@ function navFor(user: User): NavGroup[] {
       label: "آژانس",
       items: [
         { to: "/dashboard/agency", label: "پروازهای آژانس", icon: Store },
+        { to: "/dashboard/profile", label: "پروفایل و نظرها", icon: Building2 },
         { to: "/dashboard/insights", label: "آمار بازدید", icon: ChartColumn },
         { to: "/dashboard/tools", label: "ورود گروهی و API", icon: FileSpreadsheet },
       ],

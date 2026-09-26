@@ -31,6 +31,9 @@ const AgencyToolsPage = lazy(() => import("./pages/dashboard/AgencyToolsPage.tsx
 const AlertUnsubscribe = lazy(() => import("./pages/AlertUnsubscribe.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Explore = lazy(() => import("./pages/Explore.tsx"));
+const Agencies = lazy(() => import("./pages/Agencies.tsx"));
+const AgencyProfile = lazy(() => import("./pages/AgencyProfile.tsx"));
+const AgencyProfilePage = lazy(() => import("./pages/dashboard/AgencyProfilePage.tsx"));
 
 function RouteLoading() {
   return (
@@ -63,6 +66,8 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="/" element={<Landing />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/explore" element={<Explore />} />
+                  <Route path="/agencies" element={<Agencies />} />
+                  <Route path="/agencies/:slug" element={<AgencyProfile />} />
                   <Route path="/flight/:id" element={<FlightDetail />} />
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/auth/forgot" element={<ForgotPassword />} />
@@ -86,6 +91,14 @@ createRoot(document.getElementById("root")!).render(
                       element={
                         <RequireRole role="agency">
                           <AgencyListingsPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="profile"
+                      element={
+                        <RequireRole role="agency">
+                          <AgencyProfilePage />
                         </RequireRole>
                       }
                     />

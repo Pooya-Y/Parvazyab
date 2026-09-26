@@ -1,4 +1,5 @@
 import { Link, useParams, useSearchParams } from "react-router";
+import { AgencyName } from "@/components/agencies/AgencyBits";
 import { ArrowRight, Building2, ExternalLink, Heart, Info, Loader2, RotateCcw, SearchX, WifiOff } from "lucide-react";
 import { PageShell } from "@/components/layout/PageShell";
 import { FlightCard, FlightTimeline, OfferTags } from "@/components/flights/FlightCard";
@@ -203,8 +204,13 @@ export default function FlightDetail() {
             return (
               <li key={o.listingId} className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
-                  <div className="truncate font-medium">
-                    {o.agencyName}
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
+                    <AgencyName
+                      name={o.agencyName}
+                      slug={o.agencySlug}
+                      verified={o.agencyVerified}
+                      rating={o.agencyRating}
+                    />
                     <OfferTags offer={o} />
                   </div>
                   {i === 0 && flight.offers.length > 1 ? (

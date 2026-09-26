@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { AgencyName } from "@/components/agencies/AgencyBits";
 import { Button } from "@/components/ui/button";
 import { offerHref } from "@/lib/api";
 import type { Flight, FlightOffer } from "@/lib/types";
@@ -291,10 +292,15 @@ export function FlightCard({
             const url = offerHref(o, "search");
             return (
               <li key={o.listingId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                <span className="min-w-0 truncate">
-                  {o.agencyName}
+                <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <AgencyName
+                    name={o.agencyName}
+                    slug={o.agencySlug}
+                    verified={o.agencyVerified}
+                    rating={o.agencyRating}
+                  />
                   <OfferTags offer={o} />
-                  {i === 0 ? <span className="ms-2 text-xs font-medium text-success">ارزان‌ترین</span> : null}
+                  {i === 0 ? <span className="text-xs font-medium text-success">ارزان‌ترین</span> : null}
                 </span>
                 <span className="flex shrink-0 items-center gap-3">
                   <span className="font-semibold tabular-nums">{formatPrice(o.priceToman)}</span>

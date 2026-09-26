@@ -1,12 +1,16 @@
 import type {
   AdminStats,
+  AgencyProfile,
+  AgencyReview,
   AgencyStats,
+  AgencySummary,
   ApiKey,
   ClickStats,
   ImportReport,
   Flight,
   Listing,
   ListingInput,
+  OwnAgencyProfile,
   PriceCalendar,
   PriceHistory,
   ExploreResult,
@@ -199,6 +203,12 @@ export const api = {
         contentType: "text/csv",
       }),
     apiKeys: (signal?: AbortSignal) => request<ApiKey[]>("/dashboard/api-keys", { signal }),
+    profile: (signal?: AbortSignal) => request<OwnAgencyProfile>("/dashboard/profile", { signal }),
+    updateProfile: (input: Omit<OwnAgencyProfile, "name" | "verified">) =>
+      request<OwnAgencyProfile>("/dashboard/profile", { method: "PUT", body: input }),
+    reviews: (signal?: AbortSignal) => request<AgencyReview[]>("/dashboard/reviews", { signal }),
+    replyToReview: (id: string, reply: string) =>
+      request<{ ok: true }>(`/dashboard/reviews/${encodeURIComponent(id)}/reply`, { method: "PUT", body: { reply } }),
     /** The response carries the key itself: the only time it is ever shown. */
     createApiKey: (name: string) =>
       request<ApiKey & { key: string }>("/dashboard/api-keys", { method: "POST", body: { name } }),
@@ -207,6 +217,22 @@ export const api = {
       request<ClickStats>("/dashboard/clicks", { query: { days }, signal }),
     becomeAgency: (agencyName: string) =>
       request<{ ok: true }>("/dashboard/become-agency", { method: "POST", body: { agencyName } }),
+  },
+
+  agencies: {
+    list: (signal?: AbortSignal) => request<AgencySummary[]>("/agencies", { signal }),
+    get: (slug: string, signal?: AbortSignal) =>
+      request<AgencyProfile>(`/agencies/${encodeURIComponent(slug)}`, { signal }),
+    reviews: (slug: string, options: { before?: number; limit?: number } = {}, signal?: AbortSignal) =>
+      request<{ items: AgencyReview[]; mine: AgencyReview | null }>(`/agencies/${encodeURIComponent(slug)}/reviews`, {
+        query: { before: options.before, limit: options.limit },
+        signal,
+      }),
+    /** Writing again edits the one review a traveller has of an agency. */
+    saveReview: (slug: string, input: { rating: number; body: string }) =>
+      request<AgencyReview>(`/agencies/${encodeURIComponent(slug)}/reviews/mine`, { method: "PUT", body: input }),
+    deleteReview: (slug: string) =>
+      request<void>(`/agencies/${encodeURIComponent(slug)}/reviews/mine`, { method: "DELETE" }),
   },
 
   alerts: {
