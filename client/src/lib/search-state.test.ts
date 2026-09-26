@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeFilterCount, parseSearchState, toApiParams, toSearchParams } from "./search-state";
+import { CLEARED_FILTERS, activeFilterCount, parseSearchState, toApiParams, toSearchParams } from "./search-state";
 
 const parse = (qs: string) => parseSearchState(new URLSearchParams(qs));
 
@@ -54,5 +54,29 @@ describe("search URL state", () => {
       airlines: undefined,
     });
     expect(activeFilterCount(state)).toBe(2);
+  });
+
+  it("round-trips cabin and arrival window", () => {
+    const { state } = parse("from=IKA&to=IST&cabin=business&arrive=evening&time=early");
+    expect(state).toMatchObject({ cabin: "business", arrive: "evening", time: "early" });
+    expect(parseSearchState(toSearchParams(state)).state).toEqual(state);
+    expect(toApiParams(state)).toMatchObject({
+      cabin: "business",
+      departFromHour: 0,
+      departToHour: 5,
+      arriveFromHour: 18,
+      arriveToHour: 23,
+    });
+    expect(activeFilterCount(state)).toBe(3);
+    expect(parse("from=IKA&to=IST&cabin=first&arrive=noon").state).toMatchObject({ cabin: undefined, arrive: undefined });
+  });
+
+  it("CLEARED_FILTERS resets every filter when merged into URL state", () => {
+    const { state } = parse(
+      "from=THR&to=MHD&sort=cheapest&stops=0&airlines=a,b&maxPrice=9&cabin=economy&time=morning&arrive=early",
+    );
+    const cleared = { ...state, ...CLEARED_FILTERS };
+    expect(activeFilterCount(cleared)).toBe(0);
+    expect(toSearchParams(cleared).toString()).toBe("from=THR&to=MHD&sort=cheapest");
   });
 });

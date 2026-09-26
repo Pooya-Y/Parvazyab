@@ -24,7 +24,7 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { airportShortCity } from "@/domain/airports";
 import { addDaysToKey, formatDateKey, toFaDigits, todayKey } from "@/lib/persian";
 import {
-  DEFAULT_FILTERS,
+  CLEARED_FILTERS,
   SORT_OPTIONS,
   activeFilterCount,
   parseSearchState,
@@ -117,7 +117,7 @@ function SearchResults({
   const flights = results.data ?? [];
   const total = facets.data?.total;
   const filterCount = activeFilterCount(state);
-  const clearFilters = () => onChange({ ...DEFAULT_FILTERS, sort: state.sort });
+  const clearFilters = () => onChange(CLEARED_FILTERS);
   const summary = results.isLoading
     ? "در حال جستجوی پروازها…"
     : results.error
@@ -250,7 +250,7 @@ function SearchResults({
                   <SheetTitle>فیلتر نتایج</SheetTitle>
                   <SheetDescription className="sr-only">تغییرات بلافاصله روی نتایج اعمال می‌شود.</SheetDescription>
                 </SheetHeader>
-                <div className="overflow-y-auto px-4 pb-4">
+                <div className="overflow-y-auto p-4">
                   <SearchFilters facets={facets.data} filters={state} onChange={onChange} showTitle={false} />
                 </div>
                 <SheetFooter className="border-t">

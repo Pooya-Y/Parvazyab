@@ -3,7 +3,14 @@ import { RotateCcw } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { formatPrice, formatTomanCompact, toFaDigits } from "@/lib/persian";
-import { TIME_WINDOWS, activeFilterCount, type SearchFiltersState } from "@/lib/search-state";
+import {
+  CABIN_OPTIONS,
+  CLEARED_FILTERS,
+  TIME_WINDOWS,
+  activeFilterCount,
+  type SearchFiltersState,
+  type TimeWindowId,
+} from "@/lib/search-state";
 import type { SearchFacets } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -19,19 +26,17 @@ function ChoiceChips<T extends string | number | undefined>({
   options,
   value,
   onChange,
-  columns = 3,
 }: {
   legend: string;
   options: ChoiceOption<T>[];
   value: T;
   onChange: (v: T) => void;
-  columns?: 2 | 3;
 }) {
   const name = useId();
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-semibold">{legend}</legend>
-      <div className={cn("grid gap-1.5", columns === 2 ? "grid-cols-2" : "grid-cols-3")}>
+      <div className="grid grid-cols-3 gap-1.5">
         {options.map((o) => (
           <label key={String(o.value ?? "any")} className="relative">
             <input
@@ -58,15 +63,56 @@ function ChoiceChips<T extends string | number | undefined>({
   );
 }
 
+/** Single choice that can be switched off again (pressing the active chip clears it). */
+function TimeWindowToggles({
+  legend,
+  value,
+  onChange,
+}: {
+  legend: string;
+  value: TimeWindowId | undefined;
+  onChange: (v: TimeWindowId | undefined) => void;
+}) {
+  const legendId = useId();
+  return (
+    <div role="group" aria-labelledby={legendId}>
+      <div id={legendId} className="mb-2 text-sm font-semibold">
+        {legend}
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {TIME_WINDOWS.map((t) => {
+          const active = value === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(active ? undefined : t.id)}
+              className={cn(
+                "flex min-h-10 flex-col items-center justify-center rounded-md border px-2 py-1 text-xs transition-colors",
+                "hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
+                active && "border-primary bg-primary/5 font-semibold text-primary",
+              )}
+            >
+              {t.label}
+              <span className="text-[10px] font-normal text-muted-foreground">{t.hint}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const STOP_OPTIONS: ChoiceOption<0 | 1 | undefined>[] = [
   { value: undefined, label: "همه" },
   { value: 0, label: "فقط مستقیم" },
   { value: 1, label: "حداکثر ۱ توقف" },
 ];
 
-const TIME_OPTIONS: ChoiceOption<SearchFiltersState["time"]>[] = [
-  { value: undefined, label: "همه ساعت‌ها" },
-  ...TIME_WINDOWS.map((t) => ({ value: t.id, label: t.label, hint: t.hint })),
+const CABIN_CHOICES: ChoiceOption<SearchFiltersState["cabin"]>[] = [
+  { value: undefined, label: "همه" },
+  ...CABIN_OPTIONS.map((c) => ({ value: c.value, label: c.label })),
 ];
 
 /** A round step for the price slider (~100 positions). */
@@ -154,28 +200,30 @@ export function SearchFilters({
 
   return (
     <div className="space-y-6">
-      <div className="flex min-h-8 items-center justify-between">
-        {showTitle ? (
-          <h2 className="font-bold">
-            فیلترها
-            {count > 0 ? (
-              <span className="ms-1.5 text-sm font-normal text-muted-foreground">({toFaDigits(count)})</span>
-            ) : null}
-          </h2>
-        ) : (
-          <span />
-        )}
-        {count > 0 ? (
-          <button
-            type="button"
-            onClick={() => onChange({ maxStops: undefined, airlines: [], maxPrice: undefined, time: undefined })}
-            className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-primary hover:bg-primary/5"
-          >
-            <RotateCcw className="size-3.5" aria-hidden />
-            حذف همه
-          </button>
-        ) : null}
-      </div>
+      {showTitle || count > 0 ? (
+        <div className="flex min-h-8 items-center justify-between">
+          {showTitle ? (
+            <h2 className="font-bold">
+              فیلترها
+              {count > 0 ? (
+                <span className="ms-1.5 text-sm font-normal text-muted-foreground">({toFaDigits(count)})</span>
+              ) : null}
+            </h2>
+          ) : (
+            <span />
+          )}
+          {count > 0 ? (
+            <button
+              type="button"
+              onClick={() => onChange(CLEARED_FILTERS)}
+              className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-primary hover:bg-primary/5"
+            >
+              <RotateCcw className="size-3.5" aria-hidden />
+              حذف همه
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <ChoiceChips
         legend="توقف"
@@ -184,13 +232,18 @@ export function SearchFilters({
         onChange={(v) => onChange({ maxStops: v })}
       />
 
-      <ChoiceChips
-        legend="ساعت حرکت"
-        options={TIME_OPTIONS}
-        value={filters.time}
-        onChange={(v) => onChange({ time: v })}
-        columns={2}
-      />
+      {/* Only offer a cabin choice on routes that actually sell more than one cabin. */}
+      {facets && facets.cabins.length > 1 ? (
+        <ChoiceChips
+          legend="کلاس پرواز"
+          options={CABIN_CHOICES}
+          value={filters.cabin}
+          onChange={(v) => onChange({ cabin: v })}
+        />
+      ) : null}
+
+      <TimeWindowToggles legend="ساعت حرکت" value={filters.time} onChange={(v) => onChange({ time: v })} />
+      <TimeWindowToggles legend="ساعت رسیدن" value={filters.arrive} onChange={(v) => onChange({ arrive: v })} />
 
       {facets && facets.airlines.length > 0 ? (
         <fieldset>

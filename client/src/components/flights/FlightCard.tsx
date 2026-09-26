@@ -67,6 +67,13 @@ export function FlightTimeline({ flight, size = "md" }: { flight: Flight; size?:
   );
 }
 
+/** Marks business-class offers inside an offer list. */
+export function CabinTag() {
+  return (
+    <span className="ms-2 rounded-sm border px-1 py-px text-[10px] font-medium text-muted-foreground">بیزینس</span>
+  );
+}
+
 interface FlightCardProps {
   flight: Flight;
   /** Top recommendation: highlighted and shows why it was picked. */
@@ -156,7 +163,7 @@ export function FlightCard({
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-t pt-4 md:flex md:flex-col md:items-stretch md:gap-3 md:border-t-0 md:border-s md:ps-6 md:pt-0">
           <div className="flex min-w-0 items-center justify-between gap-2 md:block">
             <div>
-              {flight.agencyCount > 1 ? <div className="text-[11px] text-muted-foreground">ارزان‌ترین قیمت</div> : null}
+              {flight.offers.length > 1 ? <div className="text-[11px] text-muted-foreground">ارزان‌ترین قیمت</div> : null}
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-extrabold tabular-nums">{formatToman(flight.bestPriceToman)}</span>
                 <span className="text-xs text-muted-foreground">تومان</span>
@@ -208,7 +215,7 @@ export function FlightCard({
             ) : null}
           </div>
 
-          {flight.agencyCount > 1 ? (
+          {flight.offers.length > 1 ? (
             <button
               type="button"
               onClick={() => setOffersOpen((v) => !v)}
@@ -216,7 +223,9 @@ export function FlightCard({
               aria-controls={offersId}
               className="col-span-2 flex items-center justify-center gap-1 rounded-md py-1 text-xs font-medium text-primary hover:underline"
             >
-              مقایسه قیمت {toFaDigits(flight.agencyCount)} آژانس
+              {flight.agencyCount > 1
+                ? `مقایسه قیمت ${toFaDigits(flight.agencyCount)} آژانس`
+                : `${toFaDigits(flight.offers.length)} پیشنهاد`}
               <ChevronDown className={cn("size-3.5 transition-transform", offersOpen && "rotate-180")} aria-hidden />
             </button>
           ) : null}
@@ -228,9 +237,10 @@ export function FlightCard({
           {flight.offers.map((o, i) => {
             const url = safeExternalUrl(o.bookingUrl);
             return (
-              <li key={`${o.agencyName}-${i}`} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+              <li key={o.listingId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                 <span className="min-w-0 truncate">
                   {o.agencyName}
+                  {o.cabin === "business" ? <CabinTag /> : null}
                   {i === 0 ? <span className="ms-2 text-xs font-medium text-success">ارزان‌ترین</span> : null}
                 </span>
                 <span className="flex shrink-0 items-center gap-3">

@@ -4,7 +4,10 @@ export type Cabin = "economy" | "business";
 export type AccountRole = "admin" | "user" | "agency";
 
 export interface FlightOffer {
+  listingId: string;
+  agencyId: string;
   agencyName: string;
+  cabin: Cabin;
   priceToman: number;
   bookingUrl: string;
 }
@@ -45,6 +48,7 @@ export interface SearchFacets {
   maxPrice: number;
   minDuration: number;
   maxDuration: number;
+  cabins: Cabin[];
 }
 
 export type SortMode = "best" | "cheapest" | "fastest" | "departure" | "arrival";
@@ -57,8 +61,11 @@ export interface SearchParams {
   airlines?: string[];
   maxStops?: number;
   maxPriceToman?: number;
+  cabin?: Cabin;
   departFromHour?: number;
   departToHour?: number;
+  arriveFromHour?: number;
+  arriveToHour?: number;
 }
 
 export interface PopularRoute {

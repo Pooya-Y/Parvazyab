@@ -1,7 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router";
 import { ArrowRight, Building2, ExternalLink, Heart, Info, Loader2, RotateCcw, SearchX, WifiOff } from "lucide-react";
 import { PageShell } from "@/components/layout/PageShell";
-import { FlightCard, FlightTimeline } from "@/components/flights/FlightCard";
+import { CabinTag, FlightCard, FlightTimeline } from "@/components/flights/FlightCard";
 import { StateMessage } from "@/components/StateMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -172,16 +172,21 @@ export default function FlightDetail() {
       <section className="mt-6" aria-labelledby="offers-heading">
         <h2 id="offers-heading" className="flex items-center gap-2 text-lg font-bold">
           <Building2 className="size-5 text-primary" aria-hidden />
-          قیمت در {toFaDigits(flight.agencyCount)} آژانس
+          {flight.offers.length === flight.agencyCount
+            ? `قیمت در ${toFaDigits(flight.agencyCount)} آژانس`
+            : `${toFaDigits(flight.offers.length)} پیشنهاد از ${toFaDigits(flight.agencyCount)} آژانس`}
         </h2>
         <ul className="mt-3 divide-y overflow-hidden rounded-lg border bg-card">
           {flight.offers.map((o, i) => {
             const url = safeExternalUrl(o.bookingUrl);
             return (
-              <li key={`${o.agencyName}-${i}`} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <li key={o.listingId} className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
-                  <div className="truncate font-medium">{o.agencyName}</div>
-                  {i === 0 && flight.agencyCount > 1 ? (
+                  <div className="truncate font-medium">
+                    {o.agencyName}
+                    {o.cabin === "business" ? <CabinTag /> : null}
+                  </div>
+                  {i === 0 && flight.offers.length > 1 ? (
                     <div className="text-xs font-medium text-success">ارزان‌ترین پیشنهاد</div>
                   ) : null}
                 </div>
