@@ -9,8 +9,13 @@ export interface Account {
   id: string;
   role: AccountRole;
   name: string;
-  email: string;
-  passwordHash: string;
+  /** An account has an email (with a password), a verified mobile number, or both. */
+  email: string | null;
+  /** Null for accounts that only ever signed in by SMS code. */
+  passwordHash: string | null;
+  /** E.164; set only once verified by code. */
+  phone: string | null;
+  phoneVerifiedAt: Date | null;
   agencyName?: string | null;
   emailVerifiedAt: Date | null;
   /** Part of every session token; bumping it signs the account out everywhere. */
@@ -100,8 +105,10 @@ export const AccountEntity = new EntitySchema<Account>({
     id: { type: "uuid", primary: true, generated: "uuid" },
     role: { type: "varchar", length: 20, default: "user" },
     name: { type: "varchar", length: 120 },
-    email: { type: "varchar", length: 320, unique: true },
-    passwordHash: { name: "password_hash", type: "varchar", length: 255 },
+    email: { type: "varchar", length: 320, unique: true, nullable: true },
+    passwordHash: { name: "password_hash", type: "varchar", length: 255, nullable: true },
+    phone: { type: "varchar", length: 16, unique: true, nullable: true },
+    phoneVerifiedAt: { name: "phone_verified_at", type: "timestamptz", nullable: true },
     agencyName: { name: "agency_name", type: "varchar", length: 120, nullable: true },
     emailVerifiedAt: { name: "email_verified_at", type: "timestamptz", nullable: true },
     sessionVersion: { name: "session_version", type: "int", default: 0 },

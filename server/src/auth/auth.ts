@@ -32,7 +32,7 @@ const sessionPayload = z.object({ sub: z.string().uuid(), ver: z.number().int().
 
 /** Guest accounts get an unreachable address in this domain; they can't receive mail or sign back in. */
 export const GUEST_EMAIL_DOMAIN = "guest.parvazyab.local";
-export const isGuestAccount = (a: Pick<Account, "email">) => a.email.endsWith(`@${GUEST_EMAIL_DOMAIN}`);
+export const isGuestAccount = (a: Pick<Account, "email">) => a.email?.endsWith(`@${GUEST_EMAIL_DOMAIN}`) ?? false;
 
 export function hashPassword(password: string) {
   return bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -41,9 +41,10 @@ export function hashPassword(password: string) {
 // Compared against when the email is unknown, so login timing doesn't reveal which emails exist.
 const dummyHash = bcrypt.hashSync(randomUUID(), BCRYPT_ROUNDS);
 
-export async function verifyPassword(password: string, hash: string | undefined) {
+/** False when there is no hash (unknown email, or an account without a password), after the same work. */
+export async function verifyPassword(password: string, hash: string | null | undefined) {
   const ok = await bcrypt.compare(password, hash ?? dummyHash);
-  return ok && hash !== undefined;
+  return ok && Boolean(hash);
 }
 
 export function setSession(res: Response, user: Pick<Account, "id" | "sessionVersion">) {
@@ -108,14 +109,22 @@ export function sessionUser(res: Response): Account {
   return user;
 }
 
-export type PublicUser = Omit<Account, "passwordHash" | "sessionVersion"> & { accountRole: "agency" | "user" };
+export type PublicUser = Omit<Account, "passwordHash" | "sessionVersion"> & {
+  accountRole: "agency" | "user";
+  /** Whether "change password" applies (accounts made by SMS code have none until they add an email). */
+  hasPassword: boolean;
+};
 
 export function sanitizeUser(u: Account): PublicUser;
 export function sanitizeUser(u: Account | null): PublicUser | null;
 export function sanitizeUser(u: Account | null): PublicUser | null {
   if (!u) return null;
   const { passwordHash: _hash, sessionVersion: _version, ...safe } = u;
-  return { ...safe, accountRole: u.role === "agency" ? "agency" : "user" };
+  return {
+    ...safe,
+    accountRole: u.role === "agency" ? "agency" : "user",
+    hasPassword: u.passwordHash !== null && !isGuestAccount(u),
+  };
 }
 
 export async function createGuest() {

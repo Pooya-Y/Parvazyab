@@ -12,14 +12,14 @@ import {
   startServer,
   type TestServer,
 } from "../test/harness";
-import type { Account } from "../database/entities";
 
 describe("saved flights, agency listings and admin", { skip }, () => {
   let server: TestServer;
-  let agency: Account;
-  let otherAgency: Account;
-  let user: Account;
-  let admin: Account;
+  type TestAccount = Awaited<ReturnType<typeof createAccount>>;
+  let agency: TestAccount;
+  let otherAgency: TestAccount;
+  let user: TestAccount;
+  let admin: TestAccount;
 
   before(async () => {
     await resetDatabase();
@@ -35,7 +35,7 @@ describe("saved flights, agency listings and admin", { skip }, () => {
     await closeDatabase();
   });
 
-  async function as(account: Account) {
+  async function as(account: { email: string }) {
     const client = new TestClient(server.url);
     await signIn(client, account.email);
     return client;

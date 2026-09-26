@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isKnownAirport } from "../domain/airports";
+import { latinDigits, normalizeIranMobile } from "../domain/phone";
 import { isValidDateKey } from "../domain/time";
 import { SORT_MODES } from "../services/flightsCore";
 import { RANKING_MODES } from "../domain/rankingWeights";
@@ -109,6 +110,23 @@ export const changePasswordSchema = z.object({
   newPassword: newPasswordField,
 });
 export const profileSchema = z.object({ name: nameField });
+export const addEmailSchema = z.object({ email: emailField, password: newPasswordField });
+
+const iranMobile = z
+  .string()
+  .max(32)
+  .transform(normalizeIranMobile)
+  .refine((phone): phone is string => phone !== null, { message: "INVALID_PHONE" });
+
+export const otpRequestSchema = z.object({ phone: iranMobile });
+export const otpVerifySchema = z.object({
+  challengeId: z.string().uuid(),
+  code: z
+    .string()
+    .max(16)
+    .transform(latinDigits)
+    .pipe(z.string().regex(/^[0-9]{6}$/, "INVALID_OTP_FORMAT")),
+});
 
 const epochMs = z.number().int().nonnegative();
 const cabin = z.enum(["economy", "business"]);

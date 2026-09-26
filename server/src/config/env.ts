@@ -37,6 +37,11 @@ const envSchema = z.object({
   /** e.g. smtps://user:pass@smtp.example.com:465 */
   SMTP_URL: z.preprocess(blankAsUnset, z.string().url().optional()),
   MAIL_FROM: z.preprocess(blankAsUnset, z.string().default("پروازیاب <no-reply@parvazyab.example>")),
+  /** console = log (codes only outside production); kavenegar = Kavenegar verify/lookup; memory = tests only. */
+  SMS_TRANSPORT: z.preprocess(blankAsUnset, z.enum(["console", "kavenegar", "memory"]).default("console")),
+  KAVENEGAR_API_KEY: z.preprocess(blankAsUnset, z.string().optional()),
+  /** A Kavenegar verify template whose text contains %token. */
+  KAVENEGAR_TEMPLATE: z.preprocess(blankAsUnset, z.string().default("parvazyab-otp")),
   /** Optional bootstrap admin account, created on startup if missing. */
   ADMIN_EMAIL: z
     .string()
@@ -60,6 +65,12 @@ export function parseConfig(env: NodeJS.ProcessEnv): Config {
   if (parsed.MAIL_TRANSPORT === "smtp" && !parsed.SMTP_URL) throw new Error("MAIL_TRANSPORT=smtp requires SMTP_URL");
   if (parsed.MAIL_TRANSPORT === "memory" && parsed.NODE_ENV !== "test") {
     throw new Error("MAIL_TRANSPORT=memory is only for tests");
+  }
+  if (parsed.SMS_TRANSPORT === "kavenegar" && !parsed.KAVENEGAR_API_KEY) {
+    throw new Error("SMS_TRANSPORT=kavenegar requires KAVENEGAR_API_KEY");
+  }
+  if (parsed.SMS_TRANSPORT === "memory" && parsed.NODE_ENV !== "test") {
+    throw new Error("SMS_TRANSPORT=memory is only for tests");
   }
   return parsed;
 }

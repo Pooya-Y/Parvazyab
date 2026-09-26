@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { httpUrl, listingSchema, searchQuerySchema } from "./schemas";
+import { httpUrl, listingSchema, searchQuerySchema, otpRequestSchema, otpVerifySchema } from "./schemas";
 
 test("search query booleans are parsed, not coerced", () => {
   const base = { originCode: "THR", destinationCode: "MHD" };
@@ -61,4 +61,19 @@ test("listing schema validates shape", () => {
   assert.equal(listingSchema.safeParse({ ...valid, stops: 5 }).success, false);
   assert.equal(listingSchema.safeParse({ ...valid, priceToman: -1 }).success, false);
   assert.equal(listingSchema.safeParse({ ...valid, cabin: "first" }).success, false);
+});
+
+test("mobile numbers are normalized to E.164 and must be Iranian mobiles", () => {
+  assert.equal(otpRequestSchema.parse({ phone: "۰۹۱۲ ۱۲۳ ۴۵۶۷" }).phone, "+989121234567");
+  const bad = otpRequestSchema.safeParse({ phone: "02112345678" });
+  assert.equal(bad.success, false);
+  assert.equal(bad.error?.issues[0].message, "INVALID_PHONE");
+});
+
+test("one-time codes accept Persian digits and nothing but six digits", () => {
+  const challengeId = "3f1c2a4e-9b7d-4c1e-8f2a-5d6e7f8a9b0c";
+  assert.equal(otpVerifySchema.parse({ challengeId, code: "۱۲۳۴۵۶" }).code, "123456");
+  for (const code of ["12345", "1234567", "12 345", "abcdef"]) {
+    assert.equal(otpVerifySchema.safeParse({ challengeId, code }).success, false, code);
+  }
 });

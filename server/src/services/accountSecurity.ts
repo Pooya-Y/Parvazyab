@@ -13,14 +13,17 @@ const invalidToken = () => new HttpError(400, "INVALID_OR_EXPIRED_TOKEN");
 
 /** Queues the verification email for a new (or unverified) account. */
 export function queueVerificationEmail(account: Account): void {
+  const { email } = account;
+  if (!email || isGuestAccount(account)) return;
   runInBackground("verification email", async () => {
     const token = await issueToken(account.id, "email_verify");
-    await sendMail({ to: account.email, ...verifyEmailMail(account.name, token) });
+    await sendMail({ to: email, ...verifyEmailMail(account.name, token) });
   });
 }
 
 export async function resendVerificationEmail(user: Account): Promise<void> {
   if (isGuestAccount(user)) throw new HttpError(403, "GUEST_ACCOUNT");
+  if (!user.email) throw new HttpError(400, "NO_EMAIL");
   if (user.emailVerifiedAt) throw new HttpError(409, "EMAIL_ALREADY_VERIFIED");
   const wait = await tokenCooldown(user.id, "email_verify");
   if (wait > 0) throw new HttpError(429, "RESEND_TOO_SOON", { "Retry-After": String(wait) });
@@ -49,7 +52,7 @@ export async function requestPasswordReset(email: string, req: Request): Promise
   if (!account || isGuestAccount(account)) return;
   if ((await tokenCooldown(account.id, "password_reset")) > 0) return;
   const token = await issueToken(account.id, "password_reset");
-  await sendMail({ to: account.email, ...passwordResetMail(account.name, account.email, token) });
+  await sendMail({ to: email, ...passwordResetMail(account.name, email, token) });
   await audit(req, {
     actorId: null,
     action: "auth.password_reset_requested",
@@ -59,9 +62,11 @@ export async function requestPasswordReset(email: string, req: Request): Promise
 }
 
 function notifyPasswordChanged(account: Account) {
+  const { email } = account;
+  if (!email) return;
   const at = account.passwordChangedAt ?? new Date();
   runInBackground("password-changed email", () =>
-    sendMail({ to: account.email, ...passwordChangedMail(account.name, account.email, at) }),
+    sendMail({ to: email, ...passwordChangedMail(account.name, email, at) }),
   );
 }
 
@@ -97,6 +102,8 @@ export async function changePassword(
   req: Request,
 ): Promise<Account> {
   if (isGuestAccount(user)) throw new HttpError(403, "GUEST_ACCOUNT");
+  // Accounts made by SMS code set their first password together with an email instead.
+  if (!user.passwordHash) throw new HttpError(400, "NO_PASSWORD");
   if (!(await verifyPassword(currentPassword, user.passwordHash))) {
     throw new HttpError(400, "INVALID_CURRENT_PASSWORD");
   }

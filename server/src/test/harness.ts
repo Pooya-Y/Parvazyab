@@ -55,11 +55,18 @@ export interface TestResponse<T> {
   text: string;
 }
 
-/** A browser-like client: remembers the session cookie between requests. */
+/**
+ * A browser-like client: remembers the session cookie between requests. Give it
+ * an `ip` to appear as its own client to the per-IP rate limiters (the app trusts
+ * one proxy hop, so X-Forwarded-For sets req.ip).
+ */
 export class TestClient {
   private cookies = new Map<string, string>();
 
-  constructor(private readonly base: string) {}
+  constructor(
+    private readonly base: string,
+    private readonly ip?: string,
+  ) {}
 
   async request<T = Record<string, unknown>>(
     method: string,
@@ -74,6 +81,7 @@ export class TestClient {
       headers: {
         ...(body !== undefined && typeof body !== "string" ? { "Content-Type": "application/json" } : {}),
         ...(cookie ? { Cookie: cookie } : {}),
+        ...(this.ip ? { "X-Forwarded-For": this.ip } : {}),
         ...headers,
       },
       body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
@@ -115,8 +123,9 @@ export class TestClient {
 
 export async function createAccount(
   opts: { email?: string; name?: string; role?: AccountRole; agencyName?: string; password?: string } = {},
-): Promise<Account> {
+): Promise<Account & { email: string }> {
   const repo = accounts();
+  // Email accounts, which is what tests sign in with; phone-only accounts come from the OTP API.
   return repo.save(
     repo.create({
       email: opts.email ?? `user-${randomUUID().slice(0, 8)}@example.com`,
@@ -125,7 +134,7 @@ export async function createAccount(
       agencyName: opts.agencyName ?? (opts.role === "agency" ? "آژانس آزمایشی" : null),
       passwordHash: await hashPassword(opts.password ?? DEFAULT_PASSWORD),
     }),
-  );
+  ) as Promise<Account & { email: string }>;
 }
 
 export async function signIn(client: TestClient, email: string, password = DEFAULT_PASSWORD) {

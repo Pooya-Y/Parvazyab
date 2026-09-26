@@ -18,5 +18,6 @@ if (url) {
 process.env.NODE_ENV = "test";
 // Captured in memory so tests can read the links that would have been emailed.
 process.env.MAIL_TRANSPORT = "memory";
+process.env.SMS_TRANSPORT = "memory";
 // Redis is never connected in tests; the cache layer then falls through to the database.
 process.env.REDIS_URL = "redis://127.0.0.1:1";

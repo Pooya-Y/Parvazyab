@@ -1,5 +1,4 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 import { accounts, isUniqueViolation } from "../database/dataSource";
 import {
   clearSession,
@@ -15,37 +14,21 @@ import { HttpError } from "../http/errors";
 import { runInBackground } from "../lib/background";
 import { queueVerificationEmail, requestPasswordReset, resetPassword, verifyEmail } from "../services/accountSecurity";
 import { mergeGuestInto, upgradeGuest } from "../services/guests";
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, verifyEmailSchema } from "./schemas";
+import { signInWithCode } from "../services/phoneAuth";
+import { OTP_RESEND_SECONDS, createOtpChallenge, otpCooldown } from "../auth/otp";
+import { otpText, sendOtpSms } from "../notify/sms";
+import { credentialLimiter, guestLimiter, otpRequestLimiter, resetRequestLimiter } from "./limiters";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  otpRequestSchema,
+  otpVerifySchema,
+  registerSchema,
+  resetPasswordSchema,
+  verifyEmailSchema,
+} from "./schemas";
 
 const router = Router();
-
-/** Brute-force protection for credential endpoints only — not for `/auth/me`. */
-const credentialLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  skipSuccessfulRequests: true,
-  message: { error: "RATE_LIMITED" },
-});
-
-/** Every forgot-password request succeeds, so count all of them, not just failures. */
-const resetRequestLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 8,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "RATE_LIMITED" },
-});
-
-/** Guest accounts are cheap to create, so cap them per IP. */
-const guestLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 10,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "RATE_LIMITED" },
-});
 
 router.get("/me", async (req, res) => {
   res.json({ user: sanitizeUser(await currentUser(req)) });
@@ -109,6 +92,31 @@ router.post("/password/reset", credentialLimiter, async (req, res) => {
   const user = await resetPassword(token, password, req);
   setSession(res, user);
   res.json({ user: sanitizeUser(user) });
+});
+
+/**
+ * Starts SMS sign-in. The same answer for every number, registered or not: the
+ * code signs in to an existing account or creates one.
+ */
+router.post("/otp/request", otpRequestLimiter, async (req, res) => {
+  const { phone } = otpRequestSchema.parse(req.body);
+  const wait = await otpCooldown(phone);
+  if (wait > 0) throw new HttpError(429, "OTP_TOO_SOON", { "Retry-After": String(wait) });
+  const challenge = await createOtpChallenge(phone, "login");
+  runInBackground("sign-in SMS", () => sendOtpSms({ to: phone, code: challenge.code, text: otpText(challenge.code) }));
+  res.status(201).json({
+    challengeId: challenge.id,
+    phone,
+    expiresAt: challenge.expiresAt.getTime(),
+    resendAfter: OTP_RESEND_SECONDS,
+  });
+});
+
+router.post("/otp/verify", credentialLimiter, async (req, res) => {
+  const { challengeId, code } = otpVerifySchema.parse(req.body);
+  const { user, created } = await signInWithCode(challengeId, code, await currentUser(req));
+  setSession(res, user);
+  res.status(created ? 201 : 200).json({ user: sanitizeUser(user), created });
 });
 
 /** Doesn't sign anyone in: the link may be opened on a device that should stay signed out. */

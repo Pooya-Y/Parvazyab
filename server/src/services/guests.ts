@@ -9,7 +9,7 @@ import { isGuestAccount } from "../auth/auth";
  */
 export async function upgradeGuest(
   guest: Account,
-  fields: { name: string; email: string; passwordHash: string },
+  fields: Partial<Pick<Account, "name" | "email" | "passwordHash" | "phone" | "phoneVerifiedAt">>,
 ): Promise<Account> {
   await accounts().update(guest.id, { ...fields, sessionVersion: () => "session_version + 1" });
   return accounts().findOneByOrFail({ id: guest.id });
