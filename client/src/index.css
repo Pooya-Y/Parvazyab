@@ -2,6 +2,18 @@
 @import "tw-animate-css";
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Self-hosted variable font at a stable, versioned URL: index.html preloads it and
+ * the server-rendered route pages reuse it. Bump the file name when upgrading.
+ */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/vazirmatn-v33.003-variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

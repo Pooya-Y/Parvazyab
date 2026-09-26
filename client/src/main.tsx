@@ -1,4 +1,3 @@
-import "vazirmatn/Vazirmatn-Variable-font-face.css";
 import "./index.css";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { ThemeProvider } from "next-themes";
