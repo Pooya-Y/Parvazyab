@@ -1,6 +1,6 @@
 import { isKnownAirport } from "@/domain/airports";
 import { isValidDateKey } from "./persian";
-import type { Cabin, SearchParams, SortMode } from "./types";
+import type { Cabin, FareType, SearchParams, SortMode } from "./types";
 
 /**
  * Search state lives in the URL so results survive reloads, the back button and
@@ -20,6 +20,11 @@ export const CABIN_OPTIONS: { value: Cabin; label: string }[] = [
   { value: "business", label: "بیزینس" },
 ];
 
+export const FARE_TYPE_OPTIONS: { value: FareType; label: string }[] = [
+  { value: "scheduled", label: "سیستمی" },
+  { value: "charter", label: "چارتری" },
+];
+
 /** Departure/arrival time buckets (Tehran time, inclusive hours). */
 export const TIME_WINDOWS = [
   { id: "early", label: "بامداد", hint: "۰۰ تا ۰۶", from: 0, to: 5 },
@@ -36,6 +41,7 @@ export interface SearchFiltersState {
   airlines: string[];
   maxPrice?: number;
   cabin?: Cabin;
+  fareType?: FareType;
   /** Departure time window. */
   time?: TimeWindowId;
   /** Arrival time window. */
@@ -58,6 +64,7 @@ export const CLEARED_FILTERS: Omit<SearchFiltersState, "sort"> = {
   airlines: [],
   maxPrice: undefined,
   cabin: undefined,
+  fareType: undefined,
   time: undefined,
   arrive: undefined,
 };
@@ -65,6 +72,7 @@ export const CLEARED_FILTERS: Omit<SearchFiltersState, "sort"> = {
 const SORT_VALUES = new Set<string>(SORT_OPTIONS.map((s) => s.value));
 const TIME_IDS = new Set<string>(TIME_WINDOWS.map((t) => t.id));
 const CABINS = new Set<string>(CABIN_OPTIONS.map((c) => c.value));
+const FARE_TYPES = new Set<string>(FARE_TYPE_OPTIONS.map((f) => f.value));
 
 const timeWindow = (value: string | null) => (value && TIME_IDS.has(value) ? (value as TimeWindowId) : undefined);
 
@@ -76,6 +84,7 @@ export function parseSearchState(params: URLSearchParams): { state: SearchState;
   const stops = params.get("stops");
   const maxPrice = Number(params.get("maxPrice"));
   const cabin = params.get("cabin") ?? "";
+  const fare = params.get("fare") ?? "";
 
   const state: SearchState = {
     from,
@@ -89,6 +98,7 @@ export function parseSearchState(params: URLSearchParams): { state: SearchState;
       .filter(Boolean),
     maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : undefined,
     cabin: CABINS.has(cabin) ? (cabin as Cabin) : undefined,
+    fareType: FARE_TYPES.has(fare) ? (fare as FareType) : undefined,
     time: timeWindow(params.get("time")),
     arrive: timeWindow(params.get("arrive")),
   };
@@ -108,6 +118,7 @@ export function toSearchParams(s: SearchState): URLSearchParams {
   if (s.airlines.length) p.set("airlines", s.airlines.join(","));
   if (s.maxPrice !== undefined) p.set("maxPrice", String(s.maxPrice));
   if (s.cabin) p.set("cabin", s.cabin);
+  if (s.fareType) p.set("fare", s.fareType);
   if (s.time) p.set("time", s.time);
   if (s.arrive) p.set("arrive", s.arrive);
   return p;
@@ -135,6 +146,7 @@ export function toApiParams(s: SearchState): SearchParams {
     maxStops: s.maxStops,
     maxPriceToman: s.maxPrice,
     cabin: s.cabin,
+    fareType: s.fareType,
     departFromHour: depart?.from,
     departToHour: depart?.to,
     arriveFromHour: arrive?.from,
@@ -148,6 +160,7 @@ export function activeFilterCount(s: SearchFiltersState): number {
     (s.airlines.length ? 1 : 0) +
     (s.maxPrice !== undefined ? 1 : 0) +
     (s.cabin ? 1 : 0) +
+    (s.fareType ? 1 : 0) +
     (s.time ? 1 : 0) +
     (s.arrive ? 1 : 0)
   );

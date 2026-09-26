@@ -10,10 +10,12 @@ import {
   type FlightCard,
   type Listing,
   type Cabin,
+  type FareType,
   type SearchFilters,
 } from "./flightsCore";
 
 const CABINS: Cabin[] = ["economy", "business"];
+const FARE_TYPES: FareType[] = ["scheduled", "charter"];
 import { resolveCanonicalAirlineName } from "../domain/airlineRegistry";
 import { tehranDayBounds } from "../domain/time";
 import type { SearchQuery } from "../api/schemas";
@@ -71,6 +73,7 @@ export async function searchFlights(q: SearchQuery): Promise<FlightCard[]> {
     airlines: q.airlines,
     maxStops: q.maxStops,
     cabin: q.cabin,
+    fareType: q.fareType,
     maxPriceToman: q.maxPriceToman,
     directOnly: q.directOnly,
     departWindow:
@@ -96,6 +99,8 @@ export interface SearchFacets {
   maxDuration: number;
   /** Cabins sold on the route, so the client only offers a cabin filter when it matters. */
   cabins: Cabin[];
+  /** Fare types sold on the route (charter/scheduled). */
+  fareTypes: FareType[];
 }
 
 export async function searchFacets(originCode: string, destinationCode: string, date?: string): Promise<SearchFacets> {
@@ -110,6 +115,7 @@ export async function searchFacets(originCode: string, destinationCode: string, 
       minDuration: 0,
       maxDuration: 0,
       cabins: [],
+      fareTypes: [],
     };
   }
   const bounds = resultBounds(flights);
@@ -122,6 +128,7 @@ export async function searchFacets(originCode: string, destinationCode: string, 
     minDuration: bounds.minDuration,
     maxDuration: bounds.maxDuration,
     cabins: CABINS.filter((c) => flights.some((f) => f.offers.some((o) => o.cabin === c))),
+    fareTypes: FARE_TYPES.filter((t) => flights.some((f) => f.offers.some((o) => o.fareType === t))),
   };
 }
 

@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { safeExternalUrl } from "@/lib/api";
-import type { Flight } from "@/lib/types";
+import type { Flight, FlightOffer } from "@/lib/types";
 import { explainFlight } from "@/services/flightsCore";
 import { flightDetailHref } from "@/lib/search-state";
 import {
@@ -67,10 +67,21 @@ export function FlightTimeline({ flight, size = "md" }: { flight: Flight; size?:
   );
 }
 
-/** Marks business-class offers inside an offer list. */
-export function CabinTag() {
+function Tag({ children }: { children: string }) {
   return (
-    <span className="ms-2 rounded-sm border px-1 py-px text-[10px] font-medium text-muted-foreground">بیزینس</span>
+    <span className="ms-1.5 inline-block rounded-sm border px-1 py-px align-middle text-[10px] leading-4 font-medium text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+
+/** Business-class and charter markers for one offer. */
+export function OfferTags({ offer }: { offer: Pick<FlightOffer, "cabin" | "fareType"> }) {
+  return (
+    <>
+      {offer.cabin === "business" ? <Tag>بیزینس</Tag> : null}
+      {offer.fareType === "charter" ? <Tag>چارتری</Tag> : null}
+    </>
   );
 }
 
@@ -163,12 +174,19 @@ export function FlightCard({
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-t pt-4 md:flex md:flex-col md:items-stretch md:gap-3 md:border-t-0 md:border-s md:ps-6 md:pt-0">
           <div className="flex min-w-0 items-center justify-between gap-2 md:block">
             <div>
-              {flight.offers.length > 1 ? <div className="text-[11px] text-muted-foreground">ارزان‌ترین قیمت</div> : null}
+              {flight.offers.length > 1 ? (
+                <div className="text-[11px] text-muted-foreground">ارزان‌ترین قیمت</div>
+              ) : null}
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-extrabold tabular-nums">{formatToman(flight.bestPriceToman)}</span>
                 <span className="text-xs text-muted-foreground">تومان</span>
               </div>
-              {cheapest ? <div className="truncate text-xs text-muted-foreground">از {cheapest.agencyName}</div> : null}
+              {cheapest ? (
+                <div className="truncate text-xs text-muted-foreground">
+                  از {cheapest.agencyName}
+                  {cheapest.fareType === "charter" ? " · چارتری" : ""}
+                </div>
+              ) : null}
             </div>
             {onToggleSave ? (
               <Button
@@ -240,7 +258,7 @@ export function FlightCard({
               <li key={o.listingId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                 <span className="min-w-0 truncate">
                   {o.agencyName}
-                  {o.cabin === "business" ? <CabinTag /> : null}
+                  <OfferTags offer={o} />
                   {i === 0 ? <span className="ms-2 text-xs font-medium text-success">ارزان‌ترین</span> : null}
                 </span>
                 <span className="flex shrink-0 items-center gap-3">

@@ -32,6 +32,7 @@ function listing(overrides: Partial<Listing>): Listing {
     durationMin,
     stops: 0,
     cabin: "economy",
+    fareType: "scheduled",
     priceToman: 2_000_000,
     bookingUrl: "https://example.com",
     isActive: true,
@@ -209,5 +210,26 @@ test("arrival window filters on Tehran arrival time", () => {
   assert.deepEqual(
     applyFilters(cards, { arriveWindow: { fromHour: 6, toHour: 11 } }).map((c) => c.flightNo),
     ["DAY-ARR"],
+  );
+});
+
+test("fare type filter keeps only charter or scheduled offers", () => {
+  const cards = groupOffersByFlight([
+    listing({ flightNo: "BOTH", priceToman: 1_800_000, fareType: "charter", accountId: "a1" }),
+    listing({ flightNo: "BOTH", priceToman: 2_300_000, accountId: "a2" }),
+    listing({ flightNo: "SCHED", priceToman: 2_000_000 }),
+  ]);
+  const scheduled = applyFilters(cards, { fareType: "scheduled" });
+  assert.deepEqual(
+    scheduled.map((c) => [c.flightNo, c.bestPriceToman]),
+    [
+      ["BOTH", 2_300_000],
+      ["SCHED", 2_000_000],
+    ],
+  );
+  const charter = applyFilters(cards, { fareType: "charter", cabin: "economy" });
+  assert.deepEqual(
+    charter.map((c) => [c.flightNo, c.offers.map((o) => o.fareType)]),
+    [["BOTH", ["charter"]]],
   );
 });

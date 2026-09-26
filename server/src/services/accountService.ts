@@ -92,6 +92,7 @@ function toListingColumns(b: ListingInput) {
     durationMin: Math.max(1, Math.round((b.arriveAt - b.departAt) / 60_000)),
     stops: b.stops,
     cabin: b.cabin,
+    fareType: b.fareType,
     priceToman: Math.round(b.priceToman),
     bookingUrl: b.bookingUrl,
     isActive: b.isActive,

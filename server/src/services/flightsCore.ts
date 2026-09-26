@@ -17,6 +17,7 @@ export interface Listing {
   durationMin: number;
   stops: number;
   cabin: Cabin;
+  fareType: FareType;
   priceToman: number;
   bookingUrl: string;
   isActive: boolean;
@@ -24,6 +25,7 @@ export interface Listing {
 }
 
 export type Cabin = "economy" | "business";
+export type FareType = "scheduled" | "charter";
 
 /** One agency's price for a flight (a single listing). */
 export interface FlightOffer {
@@ -31,6 +33,7 @@ export interface FlightOffer {
   agencyId: string;
   agencyName: string;
   cabin: Cabin;
+  fareType: FareType;
   priceToman: number;
   bookingUrl: string;
 }
@@ -130,6 +133,7 @@ function buildFlightFromOffers(listings: Listing[]): FlightCard {
       agencyId: l.accountId,
       agencyName: l.agencyName,
       cabin: l.cabin,
+      fareType: l.fareType,
       priceToman: l.priceToman,
       bookingUrl: l.bookingUrl,
     })),
@@ -177,6 +181,8 @@ export interface SearchFilters {
   arriveWindow?: HourWindow;
   /** Offer-level: keeps only offers in this cabin. */
   cabin?: Cabin;
+  /** Offer-level: keeps only charter or only scheduled offers. */
+  fareType?: FareType;
 }
 
 function inWindow(epochMs: number, w: HourWindow): boolean {
@@ -187,9 +193,16 @@ function inWindow(epochMs: number, w: HourWindow): boolean {
 
 export function applyFilters(flights: FlightCard[], f: SearchFilters): FlightCard[] {
   // Offer-level filters first, so price filters below see the narrowed best price.
-  const offerFiltered = f.cabin
-    ? flights.flatMap((card) => restrictOffers(card, (o) => o.cabin === f.cabin) ?? [])
-    : flights;
+  const offerFiltered =
+    f.cabin || f.fareType
+      ? flights.flatMap(
+          (card) =>
+            restrictOffers(
+              card,
+              (o) => (!f.cabin || o.cabin === f.cabin) && (!f.fareType || o.fareType === f.fareType),
+            ) ?? [],
+        )
+      : flights;
   return offerFiltered.filter((fl) => {
     if (f.airlines && f.airlines.length > 0 && !f.airlines.includes(fl.airline)) return false;
     if (f.maxStops !== undefined && fl.stops > f.maxStops) return false;

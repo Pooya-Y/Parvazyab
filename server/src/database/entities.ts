@@ -2,6 +2,8 @@ import { EntitySchema, type ValueTransformer } from "typeorm";
 
 export type AccountRole = "admin" | "user" | "agency";
 export type Cabin = "economy" | "business";
+/** Scheduled ("سیستمی") seats are sold on the airline's fare rules; charter ("چارتری") seats on the charterer's. */
+export type FareType = "scheduled" | "charter";
 
 export interface Account {
   id: string;
@@ -26,6 +28,7 @@ export interface FlightListing {
   durationMin: number;
   stops: number;
   cabin: Cabin;
+  fareType: FareType;
   priceToman: number;
   bookingUrl: string;
   isActive: boolean;
@@ -94,6 +97,7 @@ export const FlightListingEntity = new EntitySchema<FlightListing>({
     durationMin: { name: "duration_min", type: "int" },
     stops: { type: "int" },
     cabin: { type: "varchar", length: 20 },
+    fareType: { name: "fare_type", type: "varchar", length: 16, default: "scheduled" },
     priceToman: { name: "price_toman", type: "bigint", transformer: bigintAsNumber },
     bookingUrl: { name: "booking_url", type: "text" },
     isActive: { name: "is_active", type: "boolean", default: true },

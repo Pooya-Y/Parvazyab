@@ -4,6 +4,8 @@ import { isValidDateKey } from "../domain/time";
 import { SORT_MODES } from "../services/flightsCore";
 import { RANKING_MODES } from "../domain/rankingWeights";
 
+export const FARE_TYPES = ["scheduled", "charter"] as const;
+
 /** Query-string booleans: `z.coerce.boolean()` would treat "false" as true. */
 const queryBoolean = z.enum(["true", "false", "1", "0"]).transform((v) => v === "true" || v === "1");
 const hour = z.coerce.number().int().min(0).max(23);
@@ -43,6 +45,7 @@ export const searchQuerySchema = z
       ),
     maxStops: z.coerce.number().int().min(0).max(3).optional(),
     cabin: z.enum(["economy", "business"]).optional(),
+    fareType: z.enum(FARE_TYPES).optional(),
     maxPriceToman: z.coerce.number().positive().optional(),
     directOnly: queryBoolean.optional(),
     departFromHour: hour.optional(),
@@ -67,6 +70,7 @@ export const loginSchema = z.object({
 
 const epochMs = z.number().int().nonnegative();
 const cabin = z.enum(["economy", "business"]);
+const fareType = z.enum(FARE_TYPES);
 
 export const savedFlightSnapshotSchema = z.object({
   snapshot: z.object({
@@ -106,6 +110,7 @@ export const listingSchema = z.object({
   arriveAt: epochMs,
   stops: z.number().int().min(0).max(3),
   cabin,
+  fareType: fareType.default("scheduled"),
   priceToman: z.number().positive().max(10_000_000_000),
   bookingUrl: httpUrl,
   isActive: z.boolean(),

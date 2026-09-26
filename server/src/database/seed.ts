@@ -88,6 +88,7 @@ async function ensureDemoSchedule(agencyIds: string[], now: number): Promise<num
         durationMin: spec.durationMin,
         stops: spec.stops,
         cabin: spec.cabin,
+        fareType: spec.fareType,
         priceToman: spec.priceToman,
         bookingUrl: `https://example.com/booking/${encodeURIComponent(spec.flightNo)}`,
         isActive: true,

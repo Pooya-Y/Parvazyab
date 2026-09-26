@@ -23,7 +23,13 @@ import {
   todayKey,
 } from "@/lib/persian";
 import { invalidate } from "@/lib/use-api-query";
-import type { Cabin, Listing } from "@/lib/types";
+import type { Cabin, FareType, Listing } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const FARE_TYPE_CHOICES: { value: FareType; label: string; hint: string }[] = [
+  { value: "scheduled", label: "سیستمی", hint: "با قوانین نرخ ایرلاین" },
+  { value: "charter", label: "چارتری", hint: "معمولاً استرداد و تغییر محدودتر" },
+];
 
 /** Create/edit an agency flight listing. Times are entered in Tehran time. */
 export function ListingForm({ listing, onSuccess }: { listing?: Listing; onSuccess: () => void }) {
@@ -39,6 +45,7 @@ export function ListingForm({ listing, onSuccess }: { listing?: Listing; onSucce
   const [durationMin, setDurationMin] = useState(String(listing?.durationMin ?? 90));
   const [stops, setStops] = useState(listing?.stops ?? 0);
   const [cabin, setCabin] = useState<Cabin>(listing?.cabin ?? "economy");
+  const [fareType, setFareType] = useState<FareType>(listing?.fareType ?? "scheduled");
   const [price, setPrice] = useState(listing ? String(listing.priceToman) : "");
   const [bookingUrl, setBookingUrl] = useState(listing?.bookingUrl ?? "https://");
   const [isActive, setIsActive] = useState(listing?.isActive ?? true);
@@ -81,6 +88,7 @@ export function ListingForm({ listing, onSuccess }: { listing?: Listing; onSucce
         arriveAt: departAt + durationValue * 60_000,
         stops,
         cabin,
+        fareType,
         priceToman: priceValue,
         bookingUrl: bookingUrl.trim(),
         isActive,
@@ -201,6 +209,33 @@ export function ListingForm({ listing, onSuccess }: { listing?: Listing; onSucce
           </Select>
         </div>
       </div>
+
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-medium">نوع بلیط</legend>
+        <div className="grid grid-cols-2 gap-2">
+          {FARE_TYPE_CHOICES.map((choice) => (
+            <label key={choice.value} className="relative">
+              <input
+                type="radio"
+                name={field("fare")}
+                value={choice.value}
+                checked={fareType === choice.value}
+                onChange={() => setFareType(choice.value)}
+                className="peer sr-only"
+              />
+              <span
+                className={cn(
+                  "flex cursor-pointer flex-col rounded-md border px-3 py-2 transition-colors hover:bg-accent",
+                  "peer-checked:border-primary peer-checked:bg-primary/5 peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50",
+                )}
+              >
+                <span className="text-sm font-semibold">{choice.label}</span>
+                <span className="text-xs text-muted-foreground">{choice.hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <div className="space-y-1.5">
         <Label htmlFor={field("price")}>قیمت (تومان)</Label>

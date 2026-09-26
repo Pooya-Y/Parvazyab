@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/layout/PageShell";
 import { ListingForm } from "@/components/dashboard/ListingForm";
+import { OfferTags } from "@/components/flights/FlightCard";
 import { StateMessage } from "@/components/StateMessage";
 import {
   AlertDialog,
@@ -300,6 +301,7 @@ function AgencyTab() {
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {l.airline} · <bdi className="font-mono text-xs">{l.flightNo}</bdi> · {formatJalaliDate(l.departAt)}{" "}
                   ساعت {formatTime(l.departAt)}
+                  <OfferTags offer={l} />
                 </p>
               </div>
               <div className="flex w-full items-center justify-between gap-3 sm:w-auto">

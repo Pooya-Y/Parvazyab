@@ -1,7 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router";
 import { ArrowRight, Building2, ExternalLink, Heart, Info, Loader2, RotateCcw, SearchX, WifiOff } from "lucide-react";
 import { PageShell } from "@/components/layout/PageShell";
-import { CabinTag, FlightCard, FlightTimeline } from "@/components/flights/FlightCard";
+import { FlightCard, FlightTimeline, OfferTags } from "@/components/flights/FlightCard";
 import { StateMessage } from "@/components/StateMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -184,7 +184,7 @@ export default function FlightDetail() {
                 <div className="min-w-0">
                   <div className="truncate font-medium">
                     {o.agencyName}
-                    {o.cabin === "business" ? <CabinTag /> : null}
+                    <OfferTags offer={o} />
                   </div>
                   {i === 0 && flight.offers.length > 1 ? (
                     <div className="text-xs font-medium text-success">ارزان‌ترین پیشنهاد</div>
@@ -209,8 +209,11 @@ export default function FlightDetail() {
             );
           })}
         </ul>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs leading-6 text-muted-foreground">
           خرید و صدور بلیط در سایت آژانس انجام می‌شود. قیمت نهایی را پیش از پرداخت در سایت آژانس بررسی کنید.
+          {flight.offers.some((o) => o.fareType === "charter")
+            ? " بلیط چارتری را چارترکننده می‌فروشد و معمولاً استرداد و تغییر آن محدودتر است؛ قوانین را پیش از خرید بخوانید."
+            : ""}
         </p>
       </section>
 

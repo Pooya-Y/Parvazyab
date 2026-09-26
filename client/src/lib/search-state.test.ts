@@ -79,4 +79,12 @@ describe("search URL state", () => {
     expect(activeFilterCount(cleared)).toBe(0);
     expect(toSearchParams(cleared).toString()).toBe("from=THR&to=MHD&sort=cheapest");
   });
+
+  it("round-trips the fare type as `fare`", () => {
+    const { state } = parse("from=THR&to=MHD&fare=charter");
+    expect(state.fareType).toBe("charter");
+    expect(toSearchParams(state).get("fare")).toBe("charter");
+    expect(toApiParams(state).fareType).toBe("charter");
+    expect(parse("from=THR&to=MHD&fare=vip").state.fareType).toBeUndefined();
+  });
 });

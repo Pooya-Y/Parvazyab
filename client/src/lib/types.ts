@@ -1,6 +1,8 @@
 /** Shapes returned by the Parvazyab API (dates are epoch ms). */
 
 export type Cabin = "economy" | "business";
+/** "scheduled" = سیستمی (airline fare rules), "charter" = چارتری (charterer's rules). */
+export type FareType = "scheduled" | "charter";
 export type AccountRole = "admin" | "user" | "agency";
 
 export interface FlightOffer {
@@ -8,6 +10,7 @@ export interface FlightOffer {
   agencyId: string;
   agencyName: string;
   cabin: Cabin;
+  fareType: FareType;
   priceToman: number;
   bookingUrl: string;
 }
@@ -49,6 +52,7 @@ export interface SearchFacets {
   minDuration: number;
   maxDuration: number;
   cabins: Cabin[];
+  fareTypes: FareType[];
 }
 
 export type SortMode = "best" | "cheapest" | "fastest" | "departure" | "arrival";
@@ -62,6 +66,7 @@ export interface SearchParams {
   maxStops?: number;
   maxPriceToman?: number;
   cabin?: Cabin;
+  fareType?: FareType;
   departFromHour?: number;
   departToHour?: number;
   arriveFromHour?: number;
@@ -115,6 +120,7 @@ export interface Listing {
   durationMin: number;
   stops: number;
   cabin: Cabin;
+  fareType: FareType;
   priceToman: number;
   bookingUrl: string;
   isActive: boolean;

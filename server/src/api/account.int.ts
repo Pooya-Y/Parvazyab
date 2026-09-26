@@ -107,6 +107,45 @@ describe("saved flights, agency listings and admin", { skip }, () => {
     assert.equal(stats.body.active, 1);
   });
 
+  test("listings carry a fare type that search can filter on", async () => {
+    const owner = await as(agency);
+    const departAt = hoursFromNow(60).getTime();
+    const base = {
+      originCode: "THR",
+      destinationCode: "KIH",
+      airline: "ماهان ایر",
+      departAt,
+      arriveAt: departAt + 130 * 60_000,
+      stops: 0,
+      cabin: "economy",
+      bookingUrl: "https://agency.example/kih",
+      isActive: true,
+    };
+    const charter = await owner.post("/api/dashboard/listings", {
+      ...base,
+      flightNo: "W5-553",
+      priceToman: 2_500_000,
+      fareType: "charter",
+    });
+    assert.equal(charter.status, 201);
+    const scheduled = await owner.post("/api/dashboard/listings", { ...base, flightNo: "IR-551", priceToman: 3_100_000 });
+    assert.equal(scheduled.status, 201);
+
+    const mine = await owner.get<{ flightNo: string; fareType: string }[]>("/api/dashboard/listings");
+    assert.equal(mine.body.find((l) => l.flightNo === "IR-551")?.fareType, "scheduled");
+
+    const onlyCharter = await owner.get<{ flightNo: string; offers: { fareType: string }[] }[]>(
+      "/api/search?originCode=THR&destinationCode=KIH&fareType=charter",
+    );
+    assert.deepEqual(
+      onlyCharter.body.map((f) => [f.flightNo, f.offers[0].fareType]),
+      [["W5-553", "charter"]],
+    );
+    const facets = await owner.get<{ fareTypes: string[] }>("/api/search/facets?originCode=THR&destinationCode=KIH");
+    assert.deepEqual(facets.body.fareTypes, ["scheduled", "charter"]);
+    assert.equal((await owner.get("/api/search?originCode=THR&destinationCode=KIH&fareType=vip")).status, 400);
+  });
+
   test("listing writes reject non-http booking links", async () => {
     const owner = await as(agency);
     const departAt = hoursFromNow(80).getTime();

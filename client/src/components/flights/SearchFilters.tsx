@@ -6,6 +6,7 @@ import { formatPrice, formatTomanCompact, toFaDigits } from "@/lib/persian";
 import {
   CABIN_OPTIONS,
   CLEARED_FILTERS,
+  FARE_TYPE_OPTIONS,
   TIME_WINDOWS,
   activeFilterCount,
   type SearchFiltersState,
@@ -113,6 +114,11 @@ const STOP_OPTIONS: ChoiceOption<0 | 1 | undefined>[] = [
 const CABIN_CHOICES: ChoiceOption<SearchFiltersState["cabin"]>[] = [
   { value: undefined, label: "همه" },
   ...CABIN_OPTIONS.map((c) => ({ value: c.value, label: c.label })),
+];
+
+const FARE_TYPE_CHOICES: ChoiceOption<SearchFiltersState["fareType"]>[] = [
+  { value: undefined, label: "همه" },
+  ...FARE_TYPE_OPTIONS.map((f) => ({ value: f.value, label: f.label })),
 ];
 
 /** A round step for the price slider (~100 positions). */
@@ -240,6 +246,20 @@ export function SearchFilters({
           value={filters.cabin}
           onChange={(v) => onChange({ cabin: v })}
         />
+      ) : null}
+
+      {facets && facets.fareTypes.length > 1 ? (
+        <div>
+          <ChoiceChips
+            legend="نوع بلیط"
+            options={FARE_TYPE_CHOICES}
+            value={filters.fareType}
+            onChange={(v) => onChange({ fareType: v })}
+          />
+          <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+            بلیط چارتری معمولاً ارزان‌تر است اما استرداد و تغییر آن محدودتر است.
+          </p>
+        </div>
       ) : null}
 
       <TimeWindowToggles legend="ساعت حرکت" value={filters.time} onChange={(v) => onChange({ time: v })} />
