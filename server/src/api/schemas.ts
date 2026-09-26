@@ -42,6 +42,7 @@ export const searchQuerySchema = z
           .filter(Boolean),
       ),
     maxStops: z.coerce.number().int().min(0).max(3).optional(),
+    cabin: z.enum(["economy", "business"]).optional(),
     maxPriceToman: z.coerce.number().positive().optional(),
     directOnly: queryBoolean.optional(),
     departFromHour: hour.optional(),

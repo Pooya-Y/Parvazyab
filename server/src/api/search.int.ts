@@ -42,7 +42,15 @@ describe("search API", { skip }, () => {
     // Same real flight sold by two agencies (one spelling the airline differently).
     await createListing(a.id, { flightNo: "W5-101", departAt, priceToman: 2_690_000 });
     await createListing(b.id, { flightNo: "W5-101", airline: "ماهان", departAt, priceToman: 2_450_000 });
-    await createListing(a.id, { flightNo: "IR-112", airline: "ایران ایر", departAt: hoursFromNow(40), priceToman: 2_980_000 });
+    const ir112 = hoursFromNow(40);
+    await createListing(a.id, { flightNo: "IR-112", airline: "ایران ایر", departAt: ir112, priceToman: 2_980_000 });
+    await createListing(a.id, {
+      flightNo: "IR-112",
+      airline: "ایران ایر",
+      departAt: ir112,
+      cabin: "business",
+      priceToman: 6_500_000,
+    });
     // Never visible: inactive, departed.
     await createListing(a.id, { flightNo: "OFF-1", isActive: false });
     await createListing(a.id, { flightNo: "GONE-1", departAt: hoursFromNow(-2) });
@@ -94,6 +102,18 @@ describe("search API", { skip }, () => {
     assert.equal(res.body.total, 3);
     assert.equal(res.body.minPrice, 1_990_000);
     assert.deepEqual(res.body.airlines, ["ایران ایر", "ماهان ایر"]);
+  });
+
+  test("cabin filter narrows offers inside a flight", async () => {
+    const res = await client.get<(Card & { cabin: string })[]>(
+      "/api/search?originCode=THR&destinationCode=MHD&cabin=business",
+    );
+    assert.deepEqual(
+      res.body.map((c) => [c.flightNo, c.cabin, c.bestPriceToman, c.offers.length]),
+      [["IR-112", "business", 6_500_000, 1]],
+    );
+    const facets = await client.get<{ cabins: string[] }>("/api/search/facets?originCode=THR&destinationCode=MHD");
+    assert.deepEqual(facets.body.cabins, ["economy", "business"]);
   });
 
   test("single-flight endpoint resolves ids and 404s unknown ones", async () => {
