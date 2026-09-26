@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import router from "./api/router";
+import seoRouter from "./seo/router";
 import { allowedOrigins } from "./config/env";
 import { errorHandler } from "./http/errors";
 
@@ -30,6 +31,7 @@ export function createApp() {
     }),
   );
   app.use("/api", router);
+  app.use(seoRouter);
   app.use(errorHandler);
   return app;
 }

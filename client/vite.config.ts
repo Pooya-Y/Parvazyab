@@ -24,6 +24,11 @@ export default defineConfig({
     // Same-origin API in development so the session cookie behaves as in production.
     proxy: {
       "/api": { target: process.env.VITE_API_PROXY ?? "http://localhost:4000", changeOrigin: true },
+      // Pages the API renders for search engines (nginx routes the same paths in production).
+      "^/(flights(/|\\?|$)|sitemap\\.xml|robots\\.txt)": {
+        target: process.env.VITE_API_PROXY ?? "http://localhost:4000",
+        changeOrigin: true,
+      },
     },
   },
   test: {
