@@ -4,6 +4,7 @@ import {
   appLink,
   escapeHtml,
   formatTehranDateTime,
+  notificationMail,
   passwordChangedMail,
   passwordResetMail,
   verifyEmailMail,
@@ -41,6 +42,19 @@ describe("email templates", () => {
       assert.ok(link, `no link in ${mail.subject}`);
       assert.ok(mail.html.includes(`href="${escapeHtml(link)}"`), `HTML link differs in ${mail.subject}`);
     }
+  });
+
+  test("notification mail links into the app and offers to stop", () => {
+    const unsubscribe = appLink("/alerts/unsubscribe?alert=a1&sig=s1");
+    const mail = notificationMail(
+      "نگار",
+      { title: "تهران به مشهد: ارزان‌تر شد", body: "کمترین قیمت پایین آمد.", link: "/search?from=THR&to=MHD" },
+      unsubscribe,
+    );
+    assert.equal(mail.subject, "تهران به مشهد: ارزان‌تر شد");
+    assert.ok(mail.text.includes(appLink("/search?from=THR&to=MHD")));
+    assert.ok(mail.text.includes(unsubscribe));
+    assert.ok(mail.html.includes(`href="${escapeHtml(unsubscribe)}"`));
   });
 
   test("formats times in Iran time with the Persian calendar", () => {

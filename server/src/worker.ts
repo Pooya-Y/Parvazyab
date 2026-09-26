@@ -9,6 +9,7 @@ import { redis } from "./services/redis";
 import { config } from "./config/env";
 import { Scheduler } from "./jobs/scheduler";
 import { snapshotRoutePrices } from "./services/priceHistory";
+import { evaluatePriceAlerts } from "./services/priceAlerts";
 import {
   purgeDeadAuthTokens,
   purgeOldAuditEntries,
@@ -42,6 +43,7 @@ async function main() {
 
   const scheduler = new Scheduler()
     .add({ name: "route-price-snapshots", everyMs: 30 * MINUTE, run: () => snapshotRoutePrices(), runAtStart: true })
+    .add({ name: "price-alerts", everyMs: 15 * MINUTE, run: () => evaluatePriceAlerts(), runAtStart: true })
     .add({ name: "purge-stale-guests", everyMs: 24 * HOUR, run: () => purgeStaleGuests(), runAtStart: true })
     .add({
       name: "purge-auth-records",

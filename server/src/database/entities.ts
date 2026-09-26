@@ -204,6 +204,40 @@ export const SavedFlightEntity = new EntitySchema<SavedFlight>({
   ],
 });
 
+export type AlertCabin = "economy" | "business";
+
+export interface PriceAlert {
+  id: string;
+  accountId: string;
+  originCode: string;
+  destinationCode: string;
+  /** `yyyy-mm-dd` Iran calendar days, inclusive; both null = any date in the next 30 days. */
+  dateFrom: string | null;
+  dateTo: string | null;
+  cabin: AlertCabin | null;
+  targetPriceToman: number | null;
+  baselinePriceToman: number | null;
+  lastPriceToman: number | null;
+  lastCheckedAt: Date | null;
+  lastNotifiedPriceToman: number | null;
+  lastNotifiedAt: Date | null;
+  notifyEmail: boolean;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface AppNotification {
+  id: string;
+  accountId: string;
+  kind: string;
+  title: string;
+  body: string;
+  link: string | null;
+  data: Record<string, unknown>;
+  readAt: Date | null;
+  createdAt: Date;
+}
+
 export const PopularRouteEntity = new EntitySchema<PopularRoute>({
   name: "PopularRoute",
   tableName: "popular_routes",
@@ -212,5 +246,49 @@ export const PopularRouteEntity = new EntitySchema<PopularRoute>({
     originCode: { name: "origin_code", type: "varchar", length: 8 },
     destinationCode: { name: "destination_code", type: "varchar", length: 8 },
     routeOrder: { name: "route_order", type: "int" },
+  },
+});
+
+export const PriceAlertEntity = new EntitySchema<PriceAlert>({
+  name: "PriceAlert",
+  tableName: "price_alerts",
+  columns: {
+    id: { type: "uuid", primary: true, generated: "uuid" },
+    accountId: { name: "account_id", type: "uuid" },
+    originCode: { name: "origin_code", type: "varchar", length: 8 },
+    destinationCode: { name: "destination_code", type: "varchar", length: 8 },
+    dateFrom: { name: "date_from", type: "date", nullable: true },
+    dateTo: { name: "date_to", type: "date", nullable: true },
+    cabin: { type: "varchar", length: 20, nullable: true },
+    targetPriceToman: { name: "target_price_toman", type: "bigint", nullable: true, transformer: bigintAsNumber },
+    baselinePriceToman: { name: "baseline_price_toman", type: "bigint", nullable: true, transformer: bigintAsNumber },
+    lastPriceToman: { name: "last_price_toman", type: "bigint", nullable: true, transformer: bigintAsNumber },
+    lastCheckedAt: { name: "last_checked_at", type: "timestamptz", nullable: true },
+    lastNotifiedPriceToman: {
+      name: "last_notified_price_toman",
+      type: "bigint",
+      nullable: true,
+      transformer: bigintAsNumber,
+    },
+    lastNotifiedAt: { name: "last_notified_at", type: "timestamptz", nullable: true },
+    notifyEmail: { name: "notify_email", type: "boolean", default: true },
+    isActive: { name: "is_active", type: "boolean", default: true },
+    createdAt: { name: "created_at", type: "timestamptz", createDate: true },
+  },
+});
+
+export const NotificationEntity = new EntitySchema<AppNotification>({
+  name: "AppNotification",
+  tableName: "notifications",
+  columns: {
+    id: { type: "uuid", primary: true, generated: "uuid" },
+    accountId: { name: "account_id", type: "uuid" },
+    kind: { type: "varchar", length: 32 },
+    title: { type: "varchar", length: 200 },
+    body: { type: "text" },
+    link: { type: "varchar", length: 500, nullable: true },
+    data: { type: "jsonb", default: {} },
+    readAt: { name: "read_at", type: "timestamptz", nullable: true },
+    createdAt: { name: "created_at", type: "timestamptz", createDate: true },
   },
 });

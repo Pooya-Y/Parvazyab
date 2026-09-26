@@ -49,9 +49,11 @@ interface Layout {
   paragraphs: string[];
   action?: { label: string; url: string };
   footnote: string;
+  /** A quiet link under the footnote (e.g. unsubscribe). */
+  secondary?: { label: string; url: string };
 }
 
-function renderText({ heading, paragraphs, action, footnote }: Layout): string {
+function renderText({ heading, paragraphs, action, footnote, secondary }: Layout): string {
   return [
     heading,
     "",
@@ -59,12 +61,13 @@ function renderText({ heading, paragraphs, action, footnote }: Layout): string {
     ...(action ? [`${action.label}:`, action.url, ""] : []),
     "—",
     footnote,
+    ...(secondary ? ["", `${secondary.label}: ${secondary.url}`] : []),
     "",
     "پروازیاب",
   ].join("\n");
 }
 
-function renderHtml(subject: string, { preheader, heading, paragraphs, action, footnote }: Layout): string {
+function renderHtml(subject: string, { preheader, heading, paragraphs, action, footnote, secondary }: Layout): string {
   const cell = `font-family:${FONT};color:${COLOR.ink};text-align:right;`;
   const button = action
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 16px;">
@@ -94,7 +97,11 @@ function renderHtml(subject: string, { preheader, heading, paragraphs, action, f
         ${paragraphs.map((p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.9;">${escapeHtml(p)}</p>`).join("\n        ")}
         ${button}
       </td></tr>
-      <tr><td dir="rtl" style="padding:14px 24px 20px;border-top:1px solid ${COLOR.rule};${cell}font-size:13px;line-height:1.8;color:${COLOR.muted};">${escapeHtml(footnote)}</td></tr>
+      <tr><td dir="rtl" style="padding:14px 24px 20px;border-top:1px solid ${COLOR.rule};${cell}font-size:13px;line-height:1.8;color:${COLOR.muted};">${escapeHtml(footnote)}${
+        secondary
+          ? `<br><a href="${escapeHtml(secondary.url)}" style="color:${COLOR.muted};">${escapeHtml(secondary.label)}</a>`
+          : ""
+      }</td></tr>
     </table>
   </td></tr>
 </table>
@@ -143,5 +150,22 @@ export function passwordChangedMail(name: string, email: string, at: Date): Mail
     ],
     action: { label: "بازیابی رمز عبور", url: appLink("/auth/forgot") },
     footnote: "این پیام برای امنیت حساب شما فرستاده شده و نیازی به پاسخ ندارد.",
+  });
+}
+
+/** An in-app notification, mirrored by email. */
+export function notificationMail(
+  name: string,
+  message: { title: string; body: string; link: string | null },
+  unsubscribeUrl?: string,
+): MailContent {
+  return compose(message.title, {
+    preheader: message.body,
+    heading: message.title,
+    paragraphs: [greeting(name), message.body],
+    action: message.link ? { label: "دیدن پروازها", url: appLink(message.link) } : undefined,
+    footnote:
+      "این پیام را چون در پروازیاب هشدار قیمت ساخته‌اید دریافت می‌کنید. هشدارها را در داشبورد، بخش «هشدارهای قیمت» مدیریت کنید.",
+    secondary: unsubscribeUrl ? { label: "دیگر برای این هشدار ایمیل نفرست", url: unsubscribeUrl } : undefined,
   });
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isKnownAirport } from "../domain/airports";
 import { latinDigits, normalizeIranMobile } from "../domain/phone";
-import { isValidDateKey } from "../domain/time";
+import { addDaysToDateKey, isValidDateKey, tehranTodayKey } from "../domain/time";
 import { SORT_MODES } from "../services/flightsCore";
 import { RANKING_MODES } from "../domain/rankingWeights";
 import { EXPLORE_SCOPES } from "../services/explore";
@@ -182,3 +182,60 @@ export const listingStatusSchema = z.object({ isActive: z.boolean() });
 export const becomeAgencySchema = z.object({ agencyName: z.string().trim().min(2).max(60) });
 export const setRoleSchema = z.object({ accountRole: z.enum(["user", "agency"]) });
 export const uuidParam = z.string().uuid();
+
+// ---------------------------------------------------------------------------
+// Price alerts and notifications
+// ---------------------------------------------------------------------------
+
+/** Longest date window an alert can watch, inclusive. */
+export const MAX_ALERT_WINDOW_DAYS = 31;
+const alertPrice = z.number().int().positive().max(10_000_000_000);
+
+function alertWindow(v: { dateFrom?: string; dateTo?: string }, ctx: z.RefinementCtx) {
+  if (!v.dateFrom !== !v.dateTo) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "INCOMPLETE_DATE_RANGE" });
+    return;
+  }
+  if (!v.dateFrom || !v.dateTo) return;
+  if (v.dateTo < v.dateFrom) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "INVALID_DATE_RANGE" });
+  } else if (v.dateTo > addDaysToDateKey(v.dateFrom, MAX_ALERT_WINDOW_DAYS - 1)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "DATE_RANGE_TOO_LONG" });
+  }
+  if (v.dateTo < tehranTodayKey()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "DATE_IN_PAST" });
+  }
+}
+
+export const alertSchema = z
+  .object({
+    originCode: airportCode,
+    destinationCode: airportCode,
+    /** Iran calendar days, inclusive; leave both out to watch the next 30 days. */
+    dateFrom: dateKey.optional(),
+    dateTo: dateKey.optional(),
+    cabin: z.enum(["economy", "business"]).optional(),
+    targetPrice: alertPrice.optional(),
+    notifyEmail: z.boolean().default(true),
+  })
+  .superRefine(distinctRoute)
+  .superRefine(alertWindow);
+export type AlertInput = z.infer<typeof alertSchema>;
+
+export const alertPatchSchema = z
+  .object({
+    isActive: z.boolean().optional(),
+    /** null removes the target: notify on any real drop instead. */
+    targetPrice: alertPrice.nullable().optional(),
+    notifyEmail: z.boolean().optional(),
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), { message: "EMPTY_UPDATE" });
+export type AlertPatch = z.infer<typeof alertPatchSchema>;
+
+export const notificationsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  /** Epoch ms: page to notifications older than this. */
+  before: z.coerce.number().int().positive().optional(),
+});
+export const markReadSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(100).optional() });
+export const unsubscribeQuerySchema = z.object({ sig: z.string().min(1).max(128) });

@@ -6,6 +6,7 @@ export interface OutgoingMail {
   subject: string;
   text: string;
   html: string;
+  headers?: Record<string, string>;
 }
 
 /** Everything "sent" with MAIL_TRANSPORT=memory, which only tests may use. */

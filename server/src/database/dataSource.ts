@@ -8,7 +8,11 @@ import {
   PopularRouteEntity,
   AuthTokenEntity,
   AuditEntryEntity,
+  PriceAlertEntity,
+  NotificationEntity,
   type Account,
+  type AppNotification,
+  type PriceAlert,
   type AuthToken,
   type AuditEntry,
   type FlightListing,
@@ -21,6 +25,7 @@ import { RoutePriceSnapshots1790000002000 } from "./migrations/1790000002000-Rou
 import { ExploreIndex1790000003000 } from "./migrations/1790000003000-ExploreIndex";
 import { AccountSecurity1790000004000 } from "./migrations/1790000004000-AccountSecurity";
 import { PhoneSignIn1790000005000 } from "./migrations/1790000005000-PhoneSignIn";
+import { PriceAlerts1790000006000 } from "./migrations/1790000006000-PriceAlerts";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -34,6 +39,8 @@ export const AppDataSource = new DataSource({
     PopularRouteEntity,
     AuthTokenEntity,
     AuditEntryEntity,
+    PriceAlertEntity,
+    NotificationEntity,
   ],
   // Imported as classes (not globs) so the same list works under tsx and compiled dist.
   migrations: [
@@ -43,6 +50,7 @@ export const AppDataSource = new DataSource({
     ExploreIndex1790000003000,
     AccountSecurity1790000004000,
     PhoneSignIn1790000005000,
+    PriceAlerts1790000006000,
   ],
   migrationsTransactionMode: "each",
 });
@@ -53,6 +61,8 @@ export const savedFlights = () => AppDataSource.getRepository<SavedFlight>(Saved
 export const popularRoutes = () => AppDataSource.getRepository<PopularRoute>(PopularRouteEntity);
 export const authTokens = () => AppDataSource.getRepository<AuthToken>(AuthTokenEntity);
 export const auditLog = () => AppDataSource.getRepository<AuditEntry>(AuditEntryEntity);
+export const priceAlerts = () => AppDataSource.getRepository<PriceAlert>(PriceAlertEntity);
+export const notifications = () => AppDataSource.getRepository<AppNotification>(NotificationEntity);
 
 /** Postgres unique_violation. */
 export function isUniqueViolation(err: unknown): boolean {
