@@ -263,8 +263,8 @@ export function JalaliDatePicker({
                     : disabled
                       ? "text-muted-foreground/40"
                       : "hover:bg-accent",
-                  // Today in blue: red belongs to Fridays (and to the selected day).
-                  key === today && !selected && "font-semibold text-chart-1 ring-1 ring-chart-1/50 ring-inset",
+                  // Today: an ordinary digit in a red outline (red digits are Fridays).
+                  key === today && !selected && "ring-1 ring-primary ring-inset",
                   inRange && !selected && "bg-primary/[0.07]",
                   isRangeStart && !selected && "bg-primary/15 font-semibold text-primary",
                 )}
