@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { LoadError } from "@/components/dashboard/common";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { AUDIT_LABELS, auditLabel } from "@/lib/audit-labels";
@@ -13,6 +14,8 @@ import type { AuditEntry } from "@/lib/types";
 import { useApiQuery } from "@/lib/use-api-query";
 
 const PAGE = 50;
+/** Select items can't have an empty value; this one stands for "every kind". */
+const ALL_ACTIONS = "all";
 
 /** Details worth a glance ({ reason, note, from, to, …}) as short "key: value" text. */
 function describeDetails(details: Record<string, unknown>): string {
@@ -72,23 +75,24 @@ export default function AuditLogPage() {
       <p className="mb-4 text-sm leading-7 text-muted-foreground">
         رویدادهای امنیتی حساب‌ها و تصمیم‌های مدیریتی؛ یک سال نگه داشته می‌شوند. نشانی IP ذخیره نمی‌شود.
       </p>
-      <div className="mb-4">
-        <label htmlFor={selectId} className="me-2 text-sm">
+      {/* The app's own select: a native one draws its open list in light colours even in the dark theme. */}
+      <div className="mb-4 flex items-center gap-2">
+        <label htmlFor={selectId} className="text-sm">
           نوع رویداد
         </label>
-        <select
-          id={selectId}
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          className="h-9 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-          <option value="">همه</option>
-          {Object.entries(AUDIT_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <Select value={action || ALL_ACTIONS} onValueChange={(value) => setAction(value === ALL_ACTIONS ? "" : value)}>
+          <SelectTrigger id={selectId} className="h-9 min-w-52">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="start">
+            <SelectItem value={ALL_ACTIONS}>همه</SelectItem>
+            {Object.entries(AUDIT_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {first.error && !first.data ? (
