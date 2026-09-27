@@ -186,19 +186,22 @@ export default function Landing() {
         </ol>
       </section>
 
-      <section className="border-y bg-muted/30" aria-labelledby="why-heading">
-        <div className="container-page py-12 sm:py-16">
+      <section className="container-page" aria-labelledby="why-heading">
+        <div className="rounded-lg border bg-muted/30 px-5 py-8 sm:px-8 sm:py-10">
           <h2 id="why-heading" className="text-center text-xl font-bold sm:text-2xl">
             چرا پروازیاب؟
           </h2>
-          <div className="mt-8 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Icon beside the text on phones, above it from sm. */}
             {FEATURES.map((f) => (
-              <div key={f.title}>
-                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <div key={f.title} className="flex items-start gap-3 sm:block">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <f.icon className="size-5" aria-hidden />
                 </div>
-                <h3 className="mt-3 font-semibold">{f.title}</h3>
-                <p className="mt-1.5 text-sm leading-7 text-muted-foreground">{f.body}</p>
+                <div>
+                  <h3 className="font-semibold sm:mt-3">{f.title}</h3>
+                  <p className="mt-1 text-sm leading-7 text-muted-foreground sm:mt-1.5">{f.body}</p>
+                </div>
               </div>
             ))}
           </div>
