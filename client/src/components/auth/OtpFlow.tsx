@@ -137,7 +137,6 @@ export function OtpFlow({
             className="h-11 tabular-nums"
             value={phoneInput}
             onChange={(e) => setPhoneInput(e.target.value)}
-            placeholder="0912 345 6789"
             autoComplete="tel"
             maxLength={20}
             aria-invalid={error ? true : undefined}
