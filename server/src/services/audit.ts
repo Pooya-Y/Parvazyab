@@ -28,6 +28,7 @@ export const AUDIT_ACTIONS = [
   "admin.review_hidden",
   "admin.review_restored",
   "admin.reports_dismissed",
+  "admin.listing_reports_dismissed",
   "agency.verification_requested",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

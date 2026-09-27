@@ -9,6 +9,7 @@ import { notify } from "./notifications";
 import { reviewerName } from "./agencies";
 import { invalidate } from "./redis";
 import { SEARCH_CACHE_PREFIX } from "./flightService";
+import { reportedListings, resolveListingReports } from "./listingReports";
 
 /**
  * Moderation: what administrators can hide, and what gets brought to their
@@ -85,6 +86,8 @@ export async function setListingSuspension(
     targetId: listingId,
     details: { flight, ...(suspended ? { reason } : {}) },
   });
+  // Whichever way the admin got here, travellers who reported the offer hear it was taken down.
+  if (suspended) await resolveListingReports(listingId, "suspended");
   await tell(
     listing.accountId,
     suspended ? `پرواز ${flight} از نتایج پنهان شد` : `پرواز ${flight} دوباره نمایش داده می‌شود`,
@@ -207,7 +210,7 @@ export async function dismissReports(actor: Account, reviewId: string, req: Requ
 // ---------------------------------------------------------------------------
 
 export async function moderationQueue() {
-  const [verificationRequests, reportedReviews, [counts]] = (await Promise.all([
+  const [verificationRequests, reportedReviews, [counts], listings] = (await Promise.all([
     AppDataSource.query(
       `SELECT p.account_id AS "agencyId", p.slug, COALESCE(NULLIF(a.agency_name, ''), a.name) AS name, p.city,
               p.license_no AS "licenseNo", p.description, p.website, p.verification_requested_at AS "requestedAt",
@@ -237,6 +240,7 @@ export async function moderationQueue() {
               (SELECT count(*)::int FROM flight_listings WHERE suspended_at IS NOT NULL) AS "suspendedListings",
               (SELECT count(*)::int FROM agency_reviews WHERE status = 'hidden') AS "hiddenReviews"`,
     ),
+    reportedListings(),
   ])) as [
     {
       agencyId: string;
@@ -263,6 +267,7 @@ export async function moderationQueue() {
       reasons: string[] | null;
     }[],
     { suspendedAccounts: number; suspendedListings: number; hiddenReviews: number }[],
+    Awaited<ReturnType<typeof reportedListings>>,
   ];
   return {
     verificationRequests: verificationRequests.map((v) => ({ ...v, requestedAt: v.requestedAt.getTime() })),
@@ -273,6 +278,7 @@ export async function moderationQueue() {
       lastReportedAt: lastReportedAt.getTime(),
       reasons: reasons ?? [],
     })),
+    reportedListings: listings,
     counts,
   };
 }

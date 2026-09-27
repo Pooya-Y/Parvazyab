@@ -6,6 +6,7 @@ import { addDaysToDateKey, isValidDateKey, tehranTodayKey } from "../domain/time
 import { SORT_MODES } from "../services/flightsCore";
 import { RANKING_MODES } from "../domain/rankingWeights";
 import { EXPLORE_SCOPES } from "../services/explore";
+import { REPORT_REASONS } from "../services/listingReports";
 
 export const FARE_TYPES = ["scheduled", "charter"] as const;
 
@@ -338,6 +339,16 @@ export const suspensionSchema = z.object({ suspended: z.boolean(), reason: moder
 export const verificationDecisionSchema = z.object({ verified: z.boolean(), note: moderationNote });
 export const reviewStatusSchema = z.object({ status: z.enum(["published", "hidden"]) });
 export const reportSchema = z.object({ reason: z.string().trim().max(300).default("") });
+
+/** A traveller's report on an offer. "Other" needs a few words; a price seen on the agency's site only fits a price mismatch. */
+export const listingReportSchema = z
+  .object({
+    reason: z.enum(REPORT_REASONS),
+    observedPrice: z.number().int().positive().max(10_000_000_000).nullable().default(null),
+    note: z.string().trim().max(500).default(""),
+  })
+  .refine((r) => r.reason !== "other" || r.note.length >= 3, { message: "REPORT_NOTE_REQUIRED", path: ["note"] })
+  .transform((r) => ({ ...r, observedPrice: r.reason === "price_mismatch" ? r.observedPrice : null }));
 export const adminListingsQuerySchema = z.object({
   q: z.string().trim().max(60).default(""),
   status: z.enum(["all", "suspended"]).default("all"),
