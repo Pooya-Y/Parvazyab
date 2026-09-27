@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { ChevronLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { airportShortCity } from "@/domain/airports";
+import { airportDistinctName, airportShortCity } from "@/domain/airports";
 import { formatDateKey, formatPrice, formatToman, toFaDigits } from "@/lib/persian";
 import { searchUrl } from "@/lib/search-state";
 import type { ExploreDestination } from "@/lib/types";
@@ -12,17 +12,19 @@ import { cn } from "@/lib/utils";
  * adds a thin bar under each destination, starting at zero (one data colour,
  * rounded data end), so a domestic fare next to an international one reads at a
  * glance. The teaser leaves it out: five close prices say more as numbers.
+ * Each row searches from the airport its fare leaves from.
  */
 export function DestinationList({
-  originCode,
   destinations,
   compact = false,
+  showOrigin = false,
   fetching = false,
 }: {
-  originCode: string;
   destinations: ExploreDestination[];
   /** Tighter rows without airline details or bars (landing teaser). */
   compact?: boolean;
+  /** Name the departure airport (a city with several, such as Tehran). */
+  showOrigin?: boolean;
   /** Refetching: hold the previous render, dimmed. */
   fetching?: boolean;
 }) {
@@ -37,8 +39,8 @@ export function DestinationList({
         return (
           <li key={d.code}>
             <Link
-              to={searchUrl({ from: originCode, to: d.code, date: d.cheapestDate })}
-              aria-label={`${airportShortCity(d.code)}، از ${formatPrice(d.minPrice)}، ارزان‌ترین روز ${when}`}
+              to={searchUrl({ from: d.originCode, to: d.code, date: d.cheapestDate })}
+              aria-label={`${airportShortCity(d.code)}${showOrigin ? ` از ${airportDistinctName(d.originCode)}` : ""}، از ${formatPrice(d.minPrice)}، ارزان‌ترین روز ${when}`}
               className="grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-3 transition-colors hover:bg-accent md:grid-cols-[1.75rem_minmax(0,1fr)_auto_1rem] md:px-4"
             >
               <span className="text-center text-sm font-bold tabular-nums text-muted-foreground">
@@ -56,6 +58,7 @@ export function DestinationList({
                   ) : null}
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
+                  {showOrigin ? `از ${airportDistinctName(d.originCode)} · ` : null}
                   {when} · {toFaDigits(d.flights)} پرواز
                   {compact ? null : <span className="hidden sm:inline"> · {d.airlines.join("، ")}</span>}
                 </span>

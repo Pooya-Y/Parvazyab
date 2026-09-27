@@ -1,19 +1,24 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** A compact single-choice control built on native radios (keyboard and screen readers for free). */
+/**
+ * A compact single-choice control built on native radios (keyboard and screen readers for free).
+ * `children` go after the options, inside the same frame (e.g. a link to see everything).
+ */
 export function Segmented<T extends string | number>({
   legend,
   options,
   value,
   onChange,
   className,
+  children,
 }: {
   legend: string;
   options: { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
   className?: string;
+  children?: ReactNode;
 }) {
   const name = useId();
   return (
@@ -39,6 +44,7 @@ export function Segmented<T extends string | number>({
           </span>
         </label>
       ))}
+      {children}
     </fieldset>
   );
 }

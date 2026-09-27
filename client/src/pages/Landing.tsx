@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { useApiQuery } from "@/lib/use-api-query";
-import { airportDistinctName, airportShortCity } from "@/domain/airports";
+import { airportShortCity } from "@/domain/airports";
 import { searchUrl } from "@/lib/search-state";
 import { toFaDigits } from "@/lib/persian";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -49,19 +49,26 @@ function PopularRoutes() {
   );
 }
 
-const TEASER_ORIGINS = ["THR", "IKA", "MHD", "SYZ"];
+/** Cities rather than airports: Tehran's two airports (domestic and international) count as one origin. */
+const TEASER_ORIGINS = [
+  { codes: ["THR", "IKA"], name: "تهران" },
+  { codes: ["MHD"], name: "مشهد" },
+  { codes: ["SYZ"], name: "شیراز" },
+];
 
-/** Top five cheapest destinations from a few big airports, linking to the full explore page. */
+/** Top five cheapest destinations from a few big cities, linking to the full explore page. */
 function CheapDestinations() {
-  const [origin, setOrigin] = useState("THR");
-  const query = useApiQuery(`explore:${origin}:30:all`, (signal) => api.explore(origin, 30, "all", signal));
+  const [originIndex, setOriginIndex] = useState(0);
+  const origin = TEASER_ORIGINS[originIndex];
+  const codes = origin.codes.join(",");
+  const query = useApiQuery(`explore:${codes}:30:all`, (signal) => api.explore(codes, 30, "all", signal));
   const top = query.data?.destinations.slice(0, 5) ?? [];
 
-  // Stacked on phones; from lg the heading, origin picker and link sit beside the list, so a price is never
+  // Stacked on phones; from lg the heading and origin picker sit beside the list, so a price is never
   // a full page width away from its destination.
   return (
     <section
-      className="container-page grid gap-x-10 gap-y-5 py-12 [grid-template-areas:'head'_'list'_'more'] sm:py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[auto_1fr] lg:[grid-template-areas:'head_list'_'more_list']"
+      className="container-page grid gap-x-10 gap-y-5 py-12 [grid-template-areas:'head'_'list'] sm:py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:[grid-template-areas:'head_list']"
       aria-labelledby="cheap-heading"
     >
       <div className="flex flex-col items-start gap-4 [grid-area:head]">
@@ -73,11 +80,20 @@ function CheapDestinations() {
         </div>
         <Segmented
           legend="مبدا"
-          options={TEASER_ORIGINS.map((code) => ({ value: code, label: `از ${airportDistinctName(code)}` }))}
-          value={origin}
-          onChange={setOrigin}
+          options={TEASER_ORIGINS.map((o, i) => ({ value: i, label: `از ${o.name}` }))}
+          value={originIndex}
+          onChange={setOriginIndex}
           className="max-w-full overflow-x-auto"
-        />
+        >
+          <span className="mx-1 my-1.5 w-px shrink-0 bg-border" aria-hidden />
+          <Link
+            to={`/explore?from=${origin.codes[0]}`}
+            className="flex h-8 items-center gap-1 rounded-[5px] px-3 text-sm font-medium whitespace-nowrap text-primary transition-colors hover:bg-card focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            همه مقصدها
+            <ArrowLeft className="size-3.5" aria-hidden />
+          </Link>
+        </Segmented>
       </div>
       <div className="[grid-area:list]">
         {query.error && !query.data ? (
@@ -85,18 +101,15 @@ function CheapDestinations() {
         ) : query.isLoading ? (
           <DestinationListSkeleton rows={5} />
         ) : top.length ? (
-          <DestinationList originCode={origin} destinations={top} compact fetching={query.isFetching} />
+          <DestinationList
+            destinations={top}
+            compact
+            showOrigin={origin.codes.length > 1}
+            fetching={query.isFetching}
+          />
         ) : (
-          <p className="text-sm text-muted-foreground">فعلاً پروازی از {airportDistinctName(origin)} ثبت نشده است.</p>
+          <p className="text-sm text-muted-foreground">فعلاً پروازی از {origin.name} ثبت نشده است.</p>
         )}
-      </div>
-      <div className="[grid-area:more]">
-        <Button asChild variant="outline">
-          <Link to={`/explore?from=${origin}`}>
-            همه مقصدها از {airportDistinctName(origin)}
-            <ArrowLeft aria-hidden />
-          </Link>
-        </Button>
       </div>
     </section>
   );
