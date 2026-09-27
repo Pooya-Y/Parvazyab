@@ -42,6 +42,11 @@ export function formatPrice(value: number): string {
   return `${formatToman(value)} تومان`;
 }
 
+/** Price in thousands of toman for dense grids: 2_450_000 → "۲٬۴۵۰" (label the unit nearby). */
+export function formatThousandToman(value: number): string {
+  return formatToman(value / 1000);
+}
+
 /** Compact price: ۴٫۲ میلیون تومان / ۹۸۰ هزار تومان */
 export function formatTomanCompact(value: number): string {
   if (value >= 1_000_000) {
@@ -277,7 +282,8 @@ export function addDaysToKey(key: string, days: number): string {
   return toDateKey(d2g(g2d(g.gy, g.gm, g.gd) + days));
 }
 
-function dayDiff(fromKey: string, toKey: string): number {
+/** Whole days from `fromKey` to `toKey` (negative when `toKey` is earlier). */
+export function dayDiff(fromKey: string, toKey: string): number {
   const a = parseDateKey(fromKey);
   const b = parseDateKey(toKey);
   if (!a || !b) return NaN;
@@ -328,6 +334,18 @@ export function relativeDayLabel(date: string | number, now = Date.now()): strin
   if (diff === 2) return "پس‌فردا";
   if (diff === -1) return "دیروز";
   return null;
+}
+
+/** "همین حالا", "۵ دقیقه پیش", "۳ ساعت پیش", "دیروز", else the date: for notifications and the like. */
+export function formatRelativeTime(epochMs: number, now = Date.now()): string {
+  const minutes = Math.floor((now - epochMs) / 60_000);
+  if (minutes < 1) return "همین حالا";
+  if (minutes < 60) return `${toFaDigits(minutes)} دقیقه پیش`;
+  if (minutes < 24 * 60 && epochToDateKey(epochMs) === epochToDateKey(now)) {
+    return `${toFaDigits(Math.floor(minutes / 60))} ساعت پیش`;
+  }
+  if (dayDiff(epochToDateKey(epochMs), epochToDateKey(now)) === 1) return "دیروز";
+  return formatJalaliDate(epochMs);
 }
 
 /** Whole days between the departure and arrival calendar dates (Tehran), e.g. +1 for red-eyes. */

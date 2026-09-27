@@ -19,7 +19,7 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, { hasEr
     return (
       <main className="flex min-h-dvh items-center justify-center p-6">
         <div className="max-w-sm text-center" role="alert">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-muted">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-muted">
             <AlertTriangle className="size-6 text-muted-foreground" aria-hidden />
           </div>
           <h1 className="mt-4 text-lg font-bold">مشکلی در نمایش صفحه پیش آمد</h1>

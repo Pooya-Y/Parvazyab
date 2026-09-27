@@ -1,4 +1,5 @@
 import { accounts, flightListings, savedFlights, isUniqueViolation } from "../database/dataSource";
+import { ensureAgencyProfile } from "./agencies";
 import type { Account, FlightListing, SavedFlight } from "../database/entities";
 import { findAirport } from "../domain/airports";
 import { resolveCanonicalAirlineName } from "../domain/airlineRegistry";
@@ -74,7 +75,8 @@ export async function unsaveFlight(accountId: string, flightKey: string) {
 // Agency listings
 // ---------------------------------------------------------------------------
 
-function toListingColumns(b: ListingInput) {
+/** Validated input → stored columns: canonical airline and airport cities, derived duration. */
+export function toListingColumns(b: ListingInput) {
   if (b.originCode === b.destinationCode) throw new HttpError(400, "SAME_ORIGIN_DESTINATION");
   if (b.arriveAt <= b.departAt) throw new HttpError(400, "ARRIVAL_BEFORE_DEPARTURE");
   const origin = findAirport(b.originCode);
@@ -92,11 +94,14 @@ function toListingColumns(b: ListingInput) {
     durationMin: Math.max(1, Math.round((b.arriveAt - b.departAt) / 60_000)),
     stops: b.stops,
     cabin: b.cabin,
+    fareType: b.fareType,
     priceToman: Math.round(b.priceToman),
     bookingUrl: b.bookingUrl,
     isActive: b.isActive,
   };
 }
+
+export type ListingColumns = ReturnType<typeof toListingColumns>;
 
 export async function listListings(accountId: string) {
   const rows = await flightListings().find({ where: { accountId }, order: { departAt: "DESC" } });
@@ -160,9 +165,12 @@ export async function agencyStats(accountId: string) {
   };
 }
 
-export async function becomeAgency(user: Account, agencyName: string) {
-  if (user.role !== "user") return;
+/** Returns whether the account changed (agencies and admins are left as they are). */
+export async function becomeAgency(user: Account, agencyName: string): Promise<boolean> {
+  if (user.role !== "user") return false;
   await accounts().update({ id: user.id }, { role: "agency", agencyName });
+  await ensureAgencyProfile(user.id);
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,10 +222,13 @@ export async function adminStats() {
   };
 }
 
+/** Returns the previous role. */
 export async function setAccountRole(actor: Account, targetId: string, role: "user" | "agency") {
   if (actor.id === targetId) throw new HttpError(400, "CANNOT_CHANGE_OWN_ROLE");
   const target = await accounts().findOne({ where: { id: targetId } });
   if (!target) throw notFound();
   if (target.role === "admin") throw new HttpError(403, "CANNOT_CHANGE_ADMIN");
   await accounts().update({ id: targetId }, { role });
+  if (role === "agency") await ensureAgencyProfile(targetId);
+  return target.role;
 }

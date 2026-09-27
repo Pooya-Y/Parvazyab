@@ -24,6 +24,8 @@ function subscribe(tags: readonly string[], fn: Listener) {
 
 export interface QueryState<T> {
   data: T | undefined;
+  /** The key `data` was fetched for (differs from the current key while a new key loads). */
+  dataKey: string | null;
   error: unknown;
   /** No data to show yet. */
   isLoading: boolean;
@@ -77,10 +79,12 @@ export function useApiQuery<T>(
   );
 
   const isFetching = requestId !== null && state.id !== requestId;
+  const dataKey = state.id === null ? null : state.id.slice(0, state.id.lastIndexOf("#"));
   const data = key === null ? undefined : state.data;
   const error = state.id === requestId ? state.error : null;
   return {
     data,
+    dataKey: key === null ? null : dataKey,
     error,
     isLoading: key !== null && data === undefined && error === null,
     isFetching,

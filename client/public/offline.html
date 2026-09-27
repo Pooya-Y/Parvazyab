@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fbf9f9" />
+    <title>اتصال برقرار نیست | پروازیاب</title>
+    <style>
+      @font-face {
+        font-family: "Vazirmatn";
+        src: url("/fonts/vazirmatn-v33.003-variable.woff2") format("woff2");
+        font-weight: 100 900;
+        font-display: swap;
+      }
+      :root {
+        color-scheme: light dark;
+        --bg: #fbf9f9;
+        --fg: #1e1311;
+        --muted: #695958;
+        --brand: #d40924;
+        --rule: #e6dddc;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1615;
+          --fg: #f5f0ef;
+          --muted: #b3a6a4;
+          --brand: #f0636f;
+          --rule: #3a302e;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px 16px;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
+      }
+      main {
+        max-width: 22rem;
+        text-align: center;
+      }
+      img {
+        width: 48px;
+        height: 48px;
+      }
+      h1 {
+        margin: 16px 0 8px;
+        font-size: 1.25rem;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.9;
+      }
+      button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        border: 0;
+        border-radius: 6px;
+        background: var(--brand);
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:focus-visible {
+        outline: 3px solid color-mix(in oklab, var(--brand) 45%, transparent);
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/logo.svg" alt="" />
+      <h1>اتصال اینترنت برقرار نیست</h1>
+      <p>برای دیدن قیمت‌های تازه به اینترنت نیاز است. پس از اتصال دوباره تلاش کنید.</p>
+      <button type="button" onclick="location.reload()">تلاش دوباره</button>
+    </main>
+  </body>
+</html>

@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
+import { AgencyName } from "@/components/agencies/AgencyBits";
 import { Button } from "@/components/ui/button";
-import { safeExternalUrl } from "@/lib/api";
-import type { Flight } from "@/lib/types";
+import { offerHref } from "@/lib/api";
+import type { Flight, FlightOffer } from "@/lib/types";
 import { explainFlight } from "@/services/flightsCore";
 import { flightDetailHref } from "@/lib/search-state";
 import {
@@ -17,7 +18,7 @@ import {
 } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router";
-import { ChevronDown, ExternalLink, Heart, Loader2, Plane, Sparkles } from "lucide-react";
+import { Check, ChevronDown, ExternalLink, Heart, Loader2, Plane, Sparkles } from "lucide-react";
 import { useId, useState } from "react";
 
 /** Departure → duration/stops → arrival, laid out in RTL reading order. */
@@ -67,6 +68,24 @@ export function FlightTimeline({ flight, size = "md" }: { flight: Flight; size?:
   );
 }
 
+function Tag({ children }: { children: string }) {
+  return (
+    <span className="ms-1.5 inline-block rounded-sm border px-1 py-px align-middle text-[10px] leading-4 font-medium text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+
+/** Business-class and charter markers for one offer. */
+export function OfferTags({ offer }: { offer: Pick<FlightOffer, "cabin" | "fareType"> }) {
+  return (
+    <>
+      {offer.cabin === "business" ? <Tag>بیزینس</Tag> : null}
+      {offer.fareType === "charter" ? <Tag>چارتری</Tag> : null}
+    </>
+  );
+}
+
 interface FlightCardProps {
   flight: Flight;
   /** Top recommendation: highlighted and shows why it was picked. */
@@ -77,6 +96,17 @@ interface FlightCardProps {
   savePending?: boolean;
   /** Omit to hide the save button (e.g. signed out). */
   onToggleSave?: (flight: Flight) => void;
+  /** Round-trip selection mode: "choose this flight" replaces the buy action. */
+  selection?: FlightSelection;
+}
+
+export interface FlightSelection {
+  selected: boolean;
+  onSelect: () => void;
+  /** Button text, e.g. "انتخاب پرواز رفت". */
+  label: string;
+  /** Why this flight can't be chosen (e.g. it leaves before the outbound flight lands). */
+  unavailableReason?: string;
 }
 
 export function FlightCard({
@@ -86,12 +116,13 @@ export function FlightCard({
   saved = false,
   savePending = false,
   onToggleSave,
+  selection,
 }: FlightCardProps) {
   const [offersOpen, setOffersOpen] = useState(false);
   const headingId = useId();
   const offersId = useId();
   const cheapest = flight.offers[0];
-  const bookingUrl = cheapest ? safeExternalUrl(cheapest.bookingUrl) : undefined;
+  const bookingUrl = cheapest ? offerHref(cheapest, "search") : undefined;
   const relative = relativeDayLabel(flight.departAt);
   const highlights = (flight.badges ?? []).filter((b) => b !== "مستقیم");
 
@@ -99,8 +130,10 @@ export function FlightCard({
     <article
       aria-labelledby={headingId}
       className={cn(
-        "rounded-xl border bg-card transition-shadow hover:shadow-sm",
+        "rounded-lg border bg-card transition-shadow hover:shadow-sm",
         recommended && "border-primary/45 ring-1 ring-primary/15",
+        selection?.selected && "border-primary ring-2 ring-primary/25",
+        selection?.unavailableReason && "opacity-60 hover:shadow-none",
       )}
     >
       <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_13rem] md:gap-6 md:p-5">
@@ -156,12 +189,19 @@ export function FlightCard({
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-t pt-4 md:flex md:flex-col md:items-stretch md:gap-3 md:border-t-0 md:border-s md:ps-6 md:pt-0">
           <div className="flex min-w-0 items-center justify-between gap-2 md:block">
             <div>
-              {flight.agencyCount > 1 ? <div className="text-[11px] text-muted-foreground">ارزان‌ترین قیمت</div> : null}
+              {flight.offers.length > 1 ? (
+                <div className="text-[11px] text-muted-foreground">ارزان‌ترین قیمت</div>
+              ) : null}
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-extrabold tabular-nums">{formatToman(flight.bestPriceToman)}</span>
                 <span className="text-xs text-muted-foreground">تومان</span>
               </div>
-              {cheapest ? <div className="truncate text-xs text-muted-foreground">از {cheapest.agencyName}</div> : null}
+              {cheapest ? (
+                <div className="truncate text-xs text-muted-foreground">
+                  از {cheapest.agencyName}
+                  {cheapest.fareType === "charter" ? " · چارتری" : ""}
+                </div>
+              ) : null}
             </div>
             {onToggleSave ? (
               <Button
@@ -180,17 +220,32 @@ export function FlightCard({
           </div>
 
           <div className="flex gap-2">
-            <Button asChild={Boolean(bookingUrl)} disabled={!bookingUrl} className="h-11 flex-1 px-5 md:h-10">
-              {bookingUrl ? (
-                <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
-                  خرید بلیط
-                  <ExternalLink className="size-3.5" aria-hidden />
-                  <span className="sr-only">(از {cheapest?.agencyName}، در پنجره جدید)</span>
-                </a>
-              ) : (
-                "لینک خرید در دسترس نیست"
-              )}
-            </Button>
+            {selection ? (
+              <Button
+                type="button"
+                variant={selection.selected ? "outline" : "default"}
+                className={cn("h-11 flex-1 px-5 md:h-10", selection.selected && "border-primary text-primary")}
+                onClick={selection.onSelect}
+                disabled={Boolean(selection.unavailableReason)}
+                aria-pressed={selection.selected}
+                aria-describedby={selection.unavailableReason ? `${headingId}-reason` : undefined}
+              >
+                {selection.selected ? <Check aria-hidden /> : null}
+                {selection.selected ? "انتخاب شد" : selection.label}
+              </Button>
+            ) : (
+              <Button asChild={Boolean(bookingUrl)} disabled={!bookingUrl} className="h-11 flex-1 px-5 md:h-10">
+                {bookingUrl ? (
+                  <a href={bookingUrl} target="_blank" rel="noopener">
+                    خرید بلیط
+                    <ExternalLink className="size-3.5" aria-hidden />
+                    <span className="sr-only">(از {cheapest?.agencyName}، در پنجره جدید)</span>
+                  </a>
+                ) : (
+                  "لینک خرید در دسترس نیست"
+                )}
+              </Button>
+            )}
             {onToggleSave ? (
               <Button
                 type="button"
@@ -208,7 +263,13 @@ export function FlightCard({
             ) : null}
           </div>
 
-          {flight.agencyCount > 1 ? (
+          {selection?.unavailableReason ? (
+            <p id={`${headingId}-reason`} className="col-span-2 text-center text-xs text-muted-foreground">
+              {selection.unavailableReason}
+            </p>
+          ) : null}
+
+          {flight.offers.length > 1 && !selection ? (
             <button
               type="button"
               onClick={() => setOffersOpen((v) => !v)}
@@ -216,7 +277,9 @@ export function FlightCard({
               aria-controls={offersId}
               className="col-span-2 flex items-center justify-center gap-1 rounded-md py-1 text-xs font-medium text-primary hover:underline"
             >
-              مقایسه قیمت {toFaDigits(flight.agencyCount)} آژانس
+              {flight.agencyCount > 1
+                ? `مقایسه قیمت ${toFaDigits(flight.agencyCount)} آژانس`
+                : `${toFaDigits(flight.offers.length)} پیشنهاد`}
               <ChevronDown className={cn("size-3.5 transition-transform", offersOpen && "rotate-180")} aria-hidden />
             </button>
           ) : null}
@@ -226,18 +289,24 @@ export function FlightCard({
       {offersOpen ? (
         <ul id={offersId} className="divide-y border-t bg-muted/30 px-4 md:px-5" aria-label="قیمت آژانس‌ها">
           {flight.offers.map((o, i) => {
-            const url = safeExternalUrl(o.bookingUrl);
+            const url = offerHref(o, "search");
             return (
-              <li key={`${o.agencyName}-${i}`} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                <span className="min-w-0 truncate">
-                  {o.agencyName}
-                  {i === 0 ? <span className="ms-2 text-xs font-medium text-success">ارزان‌ترین</span> : null}
+              <li key={o.listingId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <AgencyName
+                    name={o.agencyName}
+                    slug={o.agencySlug}
+                    verified={o.agencyVerified}
+                    rating={o.agencyRating}
+                  />
+                  <OfferTags offer={o} />
+                  {i === 0 ? <span className="text-xs font-medium text-success">ارزان‌ترین</span> : null}
                 </span>
                 <span className="flex shrink-0 items-center gap-3">
                   <span className="font-semibold tabular-nums">{formatPrice(o.priceToman)}</span>
                   {url ? (
                     <Button asChild variant="outline" size="sm">
-                      <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`خرید از ${o.agencyName}`}>
+                      <a href={url} target="_blank" rel="noopener" aria-label={`خرید از ${o.agencyName}`}>
                         خرید
                       </a>
                     </Button>

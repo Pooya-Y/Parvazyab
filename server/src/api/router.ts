@@ -4,6 +4,12 @@ import { cacheStatus } from "../services/redis";
 import { apiNotFound } from "../http/errors";
 import searchRoutes from "./searchRoutes";
 import authRoutes from "./authRoutes";
+import accountSettingsRoutes from "./accountSettingsRoutes";
+import { alertRoutes, notificationRoutes } from "./alertRoutes";
+import outboundRoutes from "./outboundRoutes";
+import v1Routes from "./v1Routes";
+import agencyRoutes from "./agencyRoutes";
+import pushRoutes from "./pushRoutes";
 import { adminRoutes, dashboardRoutes, savedFlightRoutes } from "./accountRoutes";
 
 const router = Router();
@@ -23,7 +29,14 @@ router.get("/health", async (_req, res) => {
 });
 
 router.use("/", searchRoutes);
+router.use("/", outboundRoutes);
+router.use("/v1", v1Routes);
+router.use("/agencies", agencyRoutes);
+router.use("/push", pushRoutes);
 router.use("/auth", authRoutes);
+router.use("/account", accountSettingsRoutes);
+router.use("/alerts", alertRoutes);
+router.use("/notifications", notificationRoutes);
 router.use("/saved-flights", savedFlightRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/admin", adminRoutes);

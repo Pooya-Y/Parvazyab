@@ -9,11 +9,18 @@ import {
   sortFlights,
   type FlightCard,
   type Listing,
+  type Cabin,
+  type FareType,
   type SearchFilters,
 } from "./flightsCore";
+import { whereVisible } from "./visibility";
+import { agencyDirectory } from "./agencyDirectory";
 import { resolveCanonicalAirlineName } from "../domain/airlineRegistry";
 import { tehranDayBounds } from "../domain/time";
 import type { SearchQuery } from "../api/schemas";
+
+const CABINS: Cabin[] = ["economy", "business"];
+const FARE_TYPES: FareType[] = ["scheduled", "charter"];
 
 export const SEARCH_CACHE_PREFIX = "search:";
 const SEARCH_CACHE_TTL_SECONDS = 30;
@@ -27,13 +34,12 @@ const FALLBACK_AGENCY_NAME = "آژانس";
 export function loadRouteFlights(originCode: string, destinationCode: string, date?: string): Promise<FlightCard[]> {
   const key = `${SEARCH_CACHE_PREFIX}${originCode}:${destinationCode}:${date ?? "all"}`;
   return cached(key, SEARCH_CACHE_TTL_SECONDS, async () => {
-    const qb = flightListings()
-      .createQueryBuilder("f")
-      .where("f.originCode = :originCode", { originCode })
-      .andWhere("f.destinationCode = :destinationCode", { destinationCode })
-      .andWhere("f.isActive = true")
-      // Departed flights can't be booked.
-      .andWhere("f.departAt > :now", { now: new Date() })
+    const qb = whereVisible(
+      flightListings()
+        .createQueryBuilder("f")
+        .where("f.originCode = :originCode", { originCode })
+        .andWhere("f.destinationCode = :destinationCode", { destinationCode }),
+    )
       .orderBy("f.departAt", "ASC")
       .limit(MAX_LISTINGS_PER_ROUTE);
     const bounds = date ? tehranDayBounds(date) : null;
@@ -50,6 +56,7 @@ export function loadRouteFlights(originCode: string, destinationCode: string, da
       ? await accounts().find({ where: { id: In(accountIds) }, select: { id: true, name: true, agencyName: true } })
       : [];
     const agencyNames = new Map(owners.map((a) => [a.id, a.agencyName || a.name || FALLBACK_AGENCY_NAME]));
+    const directory = await agencyDirectory(accountIds);
 
     const listings: Listing[] = rows.map((r) => ({
       ...r,
@@ -57,6 +64,9 @@ export function loadRouteFlights(originCode: string, destinationCode: string, da
       arriveAt: r.arriveAt.getTime(),
       airline: resolveCanonicalAirlineName(r.airline),
       agencyName: agencyNames.get(r.accountId) ?? FALLBACK_AGENCY_NAME,
+      agencySlug: directory.get(r.accountId)?.slug ?? null,
+      agencyVerified: directory.get(r.accountId)?.verified ?? false,
+      agencyRating: directory.get(r.accountId)?.rating ?? null,
     }));
     return groupOffersByFlight(listings);
   });
@@ -67,6 +77,8 @@ export async function searchFlights(q: SearchQuery): Promise<FlightCard[]> {
   const filters: SearchFilters = {
     airlines: q.airlines,
     maxStops: q.maxStops,
+    cabin: q.cabin,
+    fareType: q.fareType,
     maxPriceToman: q.maxPriceToman,
     directOnly: q.directOnly,
     departWindow:
@@ -90,12 +102,26 @@ export interface SearchFacets {
   maxPrice: number;
   minDuration: number;
   maxDuration: number;
+  /** Cabins sold on the route, so the client only offers a cabin filter when it matters. */
+  cabins: Cabin[];
+  /** Fare types sold on the route (charter/scheduled). */
+  fareTypes: FareType[];
 }
 
 export async function searchFacets(originCode: string, destinationCode: string, date?: string): Promise<SearchFacets> {
   const flights = await loadRouteFlights(originCode, destinationCode, date);
   if (flights.length === 0) {
-    return { total: 0, directCount: 0, airlines: [], minPrice: 0, maxPrice: 0, minDuration: 0, maxDuration: 0 };
+    return {
+      total: 0,
+      directCount: 0,
+      airlines: [],
+      minPrice: 0,
+      maxPrice: 0,
+      minDuration: 0,
+      maxDuration: 0,
+      cabins: [],
+      fareTypes: [],
+    };
   }
   const bounds = resultBounds(flights);
   return {
@@ -106,6 +132,8 @@ export async function searchFacets(originCode: string, destinationCode: string, 
     maxPrice: bounds.maxPrice,
     minDuration: bounds.minDuration,
     maxDuration: bounds.maxDuration,
+    cabins: CABINS.filter((c) => flights.some((f) => f.offers.some((o) => o.cabin === c))),
+    fareTypes: FARE_TYPES.filter((t) => flights.some((f) => f.offers.some((o) => o.fareType === t))),
   };
 }
 

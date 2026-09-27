@@ -23,3 +23,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   return children;
 }
+
+/** Dashboard sections for a role; anyone else lands on their saved flights. */
+export function RequireRole({ role, children }: { role: "agency" | "admin"; children: ReactNode }) {
+  const { user } = useAuth();
+  const allowed = role === "admin" ? user?.role === "admin" : user?.accountRole === "agency";
+  return allowed ? children : <Navigate to="/dashboard/saved" replace />;
+}

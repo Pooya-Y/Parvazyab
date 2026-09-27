@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   applyFilters,
+  restrictOffers,
   buildFlightIdentityKey,
   groupOffersByFlight,
   rankFlights,
@@ -31,6 +32,7 @@ function listing(overrides: Partial<Listing>): Listing {
     durationMin,
     stops: 0,
     cabin: "economy",
+    fareType: "scheduled",
     priceToman: 2_000_000,
     bookingUrl: "https://example.com",
     isActive: true,
@@ -41,8 +43,8 @@ function listing(overrides: Partial<Listing>): Listing {
 
 test("groups offers for the same flight and keeps the cheapest first", () => {
   const cards = groupOffersByFlight([
-    listing({ priceToman: 2_700_000, agencyName: "گران" }),
-    listing({ priceToman: 2_450_000, agencyName: "ارزان" }),
+    listing({ priceToman: 2_700_000, agencyName: "گران", accountId: "agency-expensive" }),
+    listing({ priceToman: 2_450_000, agencyName: "ارزان", accountId: "agency-cheap" }),
     listing({ flightNo: "IR-112", priceToman: 3_000_000 }),
   ]);
   assert.equal(cards.length, 2);
@@ -146,4 +148,94 @@ test("sortFlights orders by the requested key", () => {
 
 test("ranking an empty set is a no-op", () => {
   assert.deepEqual(rankFlights([]), []);
+});
+
+test("agency count is distinct agencies, not offers", () => {
+  const [card] = groupOffersByFlight([
+    listing({ accountId: "a1", priceToman: 2_000_000 }),
+    listing({ accountId: "a1", priceToman: 5_000_000, cabin: "business" }),
+    listing({ accountId: "a2", priceToman: 2_100_000 }),
+  ]);
+  assert.equal(card.offers.length, 3);
+  assert.equal(card.agencyCount, 2);
+  assert.ok(card.offers.every((o) => o.listingId && o.agencyId));
+});
+
+test("restrictOffers narrows offers and recomputes the price summary", () => {
+  const [card] = groupOffersByFlight([
+    listing({ accountId: "a1", priceToman: 2_000_000 }),
+    listing({ accountId: "a1", priceToman: 5_200_000, cabin: "business" }),
+    listing({ accountId: "a2", priceToman: 4_900_000, cabin: "business" }),
+  ]);
+  assert.equal(card.cabin, "economy");
+  const business = restrictOffers(card, (o) => o.cabin === "business");
+  assert.ok(business);
+  assert.equal(business.id, card.id, "identity is unchanged");
+  assert.equal(business.cabin, "business");
+  assert.equal(business.bestPriceToman, 4_900_000);
+  assert.deepEqual(business.priceRange, { min: 4_900_000, max: 5_200_000 });
+  assert.equal(business.agencyCount, 2);
+  assert.equal(
+    restrictOffers(card, () => false),
+    null,
+  );
+  assert.equal(
+    restrictOffers(card, () => true),
+    card,
+  );
+});
+
+test("cabin filter works per offer and feeds the price filter", () => {
+  const cards = groupOffersByFlight([
+    listing({ flightNo: "MIXED", priceToman: 2_000_000 }),
+    listing({ flightNo: "MIXED", priceToman: 6_000_000, cabin: "business", accountId: "a2" }),
+    listing({ flightNo: "ECON", priceToman: 1_500_000 }),
+  ]);
+  const business = applyFilters(cards, { cabin: "business" });
+  assert.deepEqual(
+    business.map((c) => [c.flightNo, c.bestPriceToman]),
+    [["MIXED", 6_000_000]],
+  );
+  // Without the cabin filter the mixed flight is priced by its economy offer.
+  assert.deepEqual(
+    applyFilters(cards, { maxPriceToman: 2_000_000 }).map((c) => c.flightNo),
+    ["MIXED", "ECON"],
+  );
+  assert.equal(applyFilters(cards, { cabin: "business", maxPriceToman: 5_000_000 }).length, 0);
+});
+
+test("arrival window filters on Tehran arrival time", () => {
+  const cards = groupOffersByFlight([
+    listing({ flightNo: "LATE-ARR", departAt: tehran(21), durationMin: 180 }), // lands 00:00
+    listing({ flightNo: "DAY-ARR", departAt: tehran(9), durationMin: 90 }), // lands 10:30
+  ]);
+  assert.deepEqual(
+    applyFilters(cards, { arriveWindow: { fromHour: 0, toHour: 5 } }).map((c) => c.flightNo),
+    ["LATE-ARR"],
+  );
+  assert.deepEqual(
+    applyFilters(cards, { arriveWindow: { fromHour: 6, toHour: 11 } }).map((c) => c.flightNo),
+    ["DAY-ARR"],
+  );
+});
+
+test("fare type filter keeps only charter or scheduled offers", () => {
+  const cards = groupOffersByFlight([
+    listing({ flightNo: "BOTH", priceToman: 1_800_000, fareType: "charter", accountId: "a1" }),
+    listing({ flightNo: "BOTH", priceToman: 2_300_000, accountId: "a2" }),
+    listing({ flightNo: "SCHED", priceToman: 2_000_000 }),
+  ]);
+  const scheduled = applyFilters(cards, { fareType: "scheduled" });
+  assert.deepEqual(
+    scheduled.map((c) => [c.flightNo, c.bestPriceToman]),
+    [
+      ["BOTH", 2_300_000],
+      ["SCHED", 2_000_000],
+    ],
+  );
+  const charter = applyFilters(cards, { fareType: "charter", cabin: "economy" });
+  assert.deepEqual(
+    charter.map((c) => [c.flightNo, c.offers.map((o) => o.fareType)]),
+    [["BOTH", ["charter"]]],
+  );
 });

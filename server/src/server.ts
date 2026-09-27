@@ -3,6 +3,7 @@ import { bootstrapAdmin, seedDemoData } from "./database/seed";
 import { redis } from "./services/redis";
 import { createApp } from "./app";
 import { config } from "./config/env";
+import { drainBackgroundTasks } from "./lib/background";
 
 async function start() {
   await AppDataSource.initialize();
@@ -25,6 +26,8 @@ async function start() {
   const shutdown = (signal: string) => {
     console.log(`${signal} received, shutting down`);
     server.close(async () => {
+      // Queued mail still needs the database (token rows) and the SMTP connection.
+      await drainBackgroundTasks();
       await Promise.allSettled([AppDataSource.destroy(), redis.quit()]);
       process.exit(0);
     });

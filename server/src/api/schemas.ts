@@ -1,8 +1,13 @@
 import { z } from "zod";
+import { AUDIT_ACTIONS } from "../services/audit";
 import { isKnownAirport } from "../domain/airports";
-import { isValidDateKey } from "../domain/time";
+import { latinDigits, normalizeIranMobile } from "../domain/phone";
+import { addDaysToDateKey, isValidDateKey, tehranTodayKey } from "../domain/time";
 import { SORT_MODES } from "../services/flightsCore";
 import { RANKING_MODES } from "../domain/rankingWeights";
+import { EXPLORE_SCOPES } from "../services/explore";
+
+export const FARE_TYPES = ["scheduled", "charter"] as const;
 
 /** Query-string booleans: `z.coerce.boolean()` would treat "false" as true. */
 const queryBoolean = z.enum(["true", "false", "1", "0"]).transform((v) => v === "true" || v === "1");
@@ -26,46 +31,107 @@ function distinctRoute(v: { originCode: string; destinationCode: string }, ctx: 
 
 export const routeQuerySchema = z.object(routeShape).superRefine(distinctRoute);
 
+/** Filters shared by search and the price calendar, so the two never disagree. */
+const flightFilterShape = {
+  airlines: z
+    .string()
+    .max(2000)
+    .optional()
+    .transform((s) =>
+      s
+        ?.split(",")
+        .map((a) => a.trim())
+        .filter(Boolean),
+    ),
+  maxStops: z.coerce.number().int().min(0).max(3).optional(),
+  cabin: z.enum(["economy", "business"]).optional(),
+  fareType: z.enum(FARE_TYPES).optional(),
+  directOnly: queryBoolean.optional(),
+  departFromHour: hour.optional(),
+  departToHour: hour.optional(),
+  arriveFromHour: hour.optional(),
+  arriveToHour: hour.optional(),
+};
+
 export const searchQuerySchema = z
   .object({
     ...routeShape,
+    ...flightFilterShape,
     sort: z.enum(SORT_MODES).optional(),
     mode: z.enum(RANKING_MODES).optional(),
-    airlines: z
-      .string()
-      .max(2000)
-      .optional()
-      .transform((s) =>
-        s
-          ?.split(",")
-          .map((a) => a.trim())
-          .filter(Boolean),
-      ),
-    maxStops: z.coerce.number().int().min(0).max(3).optional(),
     maxPriceToman: z.coerce.number().positive().optional(),
-    directOnly: queryBoolean.optional(),
-    departFromHour: hour.optional(),
-    departToHour: hour.optional(),
-    arriveFromHour: hour.optional(),
-    arriveToHour: hour.optional(),
   })
   .superRefine(distinctRoute);
 
+export const MAX_CALENDAR_DAYS = 62;
+
+export const calendarQuerySchema = z
+  .object({
+    originCode: airportCode,
+    destinationCode: airportCode,
+    start: dateKey,
+    days: z.coerce.number().int().min(1).max(MAX_CALENDAR_DAYS).default(31),
+    ...flightFilterShape,
+  })
+  .superRefine(distinctRoute);
+
+export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
+
+export const exploreQuerySchema = z.object({
+  originCode: airportCode,
+  days: z.coerce.number().int().min(1).max(60).default(30),
+  scope: z.enum(EXPLORE_SCOPES).default("all"),
+});
+
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
 
+const emailField = z.string().trim().toLowerCase().email().max(320);
+const nameField = z.string().trim().min(2).max(120);
+/** For new passwords only; sign-in accepts whatever was allowed when the password was set. */
+const newPasswordField = z.string().min(8).max(128);
+/** Emailed tokens are 43 base64url characters; the bound only stops oversized input early. */
+const tokenField = z.string().min(1).max(128);
+
 export const registerSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  email: z.string().trim().toLowerCase().email().max(320),
-  password: z.string().min(8).max(128),
+  name: nameField,
+  email: emailField,
+  password: newPasswordField,
 });
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(320),
+  email: emailField,
   password: z.string().min(1).max(128),
+});
+
+export const forgotPasswordSchema = z.object({ email: emailField });
+export const resetPasswordSchema = z.object({ token: tokenField, password: newPasswordField });
+export const verifyEmailSchema = z.object({ token: tokenField });
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: newPasswordField,
+});
+export const profileSchema = z.object({ name: nameField });
+export const addEmailSchema = z.object({ email: emailField, password: newPasswordField });
+
+const iranMobile = z
+  .string()
+  .max(32)
+  .transform(normalizeIranMobile)
+  .refine((phone): phone is string => phone !== null, { message: "INVALID_PHONE" });
+
+export const otpRequestSchema = z.object({ phone: iranMobile });
+export const otpVerifySchema = z.object({
+  challengeId: z.string().uuid(),
+  code: z
+    .string()
+    .max(16)
+    .transform(latinDigits)
+    .pipe(z.string().regex(/^[0-9]{6}$/, "INVALID_OTP_FORMAT")),
 });
 
 const epochMs = z.number().int().nonnegative();
 const cabin = z.enum(["economy", "business"]);
+const fareType = z.enum(FARE_TYPES);
 
 export const savedFlightSnapshotSchema = z.object({
   snapshot: z.object({
@@ -105,6 +171,7 @@ export const listingSchema = z.object({
   arriveAt: epochMs,
   stops: z.number().int().min(0).max(3),
   cabin,
+  fareType: fareType.default("scheduled"),
   priceToman: z.number().positive().max(10_000_000_000),
   bookingUrl: httpUrl,
   isActive: z.boolean(),
@@ -116,3 +183,150 @@ export const listingStatusSchema = z.object({ isActive: z.boolean() });
 export const becomeAgencySchema = z.object({ agencyName: z.string().trim().min(2).max(60) });
 export const setRoleSchema = z.object({ accountRole: z.enum(["user", "agency"]) });
 export const uuidParam = z.string().uuid();
+
+// ---------------------------------------------------------------------------
+// Price alerts and notifications
+// ---------------------------------------------------------------------------
+
+/** Longest date window an alert can watch, inclusive. */
+export const MAX_ALERT_WINDOW_DAYS = 31;
+const alertPrice = z.number().int().positive().max(10_000_000_000);
+
+function alertWindow(v: { dateFrom?: string; dateTo?: string }, ctx: z.RefinementCtx) {
+  if (!v.dateFrom !== !v.dateTo) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "INCOMPLETE_DATE_RANGE" });
+    return;
+  }
+  if (!v.dateFrom || !v.dateTo) return;
+  if (v.dateTo < v.dateFrom) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "INVALID_DATE_RANGE" });
+  } else if (v.dateTo > addDaysToDateKey(v.dateFrom, MAX_ALERT_WINDOW_DAYS - 1)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "DATE_RANGE_TOO_LONG" });
+  }
+  if (v.dateTo < tehranTodayKey()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dateTo"], message: "DATE_IN_PAST" });
+  }
+}
+
+export const alertSchema = z
+  .object({
+    originCode: airportCode,
+    destinationCode: airportCode,
+    /** Iran calendar days, inclusive; leave both out to watch the next 30 days. */
+    dateFrom: dateKey.optional(),
+    dateTo: dateKey.optional(),
+    cabin: z.enum(["economy", "business"]).optional(),
+    targetPrice: alertPrice.optional(),
+    notifyEmail: z.boolean().default(true),
+  })
+  .superRefine(distinctRoute)
+  .superRefine(alertWindow);
+export type AlertInput = z.infer<typeof alertSchema>;
+
+export const alertPatchSchema = z
+  .object({
+    isActive: z.boolean().optional(),
+    /** null removes the target: notify on any real drop instead. */
+    targetPrice: alertPrice.nullable().optional(),
+    notifyEmail: z.boolean().optional(),
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), { message: "EMPTY_UPDATE" });
+export type AlertPatch = z.infer<typeof alertPatchSchema>;
+
+export const notificationsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  /** Epoch ms: page to notifications older than this. */
+  before: z.coerce.number().int().positive().optional(),
+});
+export const markReadSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(100).optional() });
+export const unsubscribeQuerySchema = z.object({ sig: z.string().min(1).max(128) });
+
+/** Analytics periods an agency can look at. */
+export const CLICK_PERIODS = [7, 30, 90] as const;
+export const clickStatsQuerySchema = z.object({
+  days: z.coerce
+    .number()
+    .int()
+    .refine((d) => (CLICK_PERIODS as readonly number[]).includes(d), { message: "INVALID_PERIOD" })
+    .default(30),
+});
+
+// ---------------------------------------------------------------------------
+// Agency profiles and reviews
+// ---------------------------------------------------------------------------
+
+/** Empty text fields mean "not set". */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .default(null);
+
+export const agencyProfileSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(40)
+    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "INVALID_SLUG"),
+  description: z.string().trim().max(1200).default(""),
+  website: z
+    .union([httpUrl, z.literal("")])
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .default(null),
+  supportPhone: z
+    .string()
+    .trim()
+    .transform(latinDigits)
+    .pipe(z.string().regex(/^[0-9+\-\s()]{0,20}$/, "INVALID_PHONE"))
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .default(null),
+  city: optionalText(60),
+  licenseNo: optionalText(40),
+});
+
+export const reviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  body: z.string().trim().max(1000).default(""),
+});
+
+export const replySchema = z.object({ reply: z.string().trim().max(1000) });
+
+export const reviewsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+  before: z.coerce.number().int().positive().optional(),
+});
+
+export const slugParam = z.string().trim().toLowerCase().max(40);
+
+// ---------------------------------------------------------------------------
+// Moderation
+// ---------------------------------------------------------------------------
+
+const moderationNote = z
+  .string()
+  .trim()
+  .max(300)
+  .transform((v) => (v === "" ? null : v))
+  .nullable()
+  .default(null);
+
+export const suspensionSchema = z.object({ suspended: z.boolean(), reason: moderationNote });
+export const verificationDecisionSchema = z.object({ verified: z.boolean(), note: moderationNote });
+export const reviewStatusSchema = z.object({ status: z.enum(["published", "hidden"]) });
+export const reportSchema = z.object({ reason: z.string().trim().max(300).default("") });
+export const adminListingsQuerySchema = z.object({
+  q: z.string().trim().max(60).default(""),
+  status: z.enum(["all", "suspended"]).default("all"),
+});
+export const auditQuerySchema = z.object({
+  action: z.enum(AUDIT_ACTIONS).optional(),
+  before: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});

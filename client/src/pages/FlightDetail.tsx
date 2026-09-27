@@ -1,18 +1,24 @@
 import { Link, useParams, useSearchParams } from "react-router";
+import { AgencyName } from "@/components/agencies/AgencyBits";
 import { ArrowRight, Building2, ExternalLink, Heart, Info, Loader2, RotateCcw, SearchX, WifiOff } from "lucide-react";
 import { PageShell } from "@/components/layout/PageShell";
-import { FlightCard, FlightTimeline } from "@/components/flights/FlightCard";
+import { FlightCard, FlightTimeline, OfferTags } from "@/components/flights/FlightCard";
 import { StateMessage } from "@/components/StateMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ShareButton } from "@/components/ShareButton";
+import { PriceAlertButton } from "@/components/alerts/PriceAlertButton";
+import { RoutePriceTrend } from "@/components/charts/RoutePriceTrend";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, safeExternalUrl } from "@/lib/api";
+import { api, offerHref } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { useApiQuery } from "@/lib/use-api-query";
 import { isKnownAirport } from "@/domain/airports";
 import {
+  epochToDateKey,
   formatJalaliWeekday,
   formatPrice,
+  formatTime,
   formatToman,
   relativeDayLabel,
   toFaDigits,
@@ -61,8 +67,8 @@ export default function FlightDetail() {
         <div role="status" aria-label="در حال بارگذاری جزئیات پرواز">
           <Skeleton className="h-5 w-40" />
           <Skeleton className="mt-5 h-8 w-64" />
-          <Skeleton className="mt-4 h-44 w-full rounded-xl" />
-          <Skeleton className="mt-4 h-32 w-full rounded-xl" />
+          <Skeleton className="mt-4 h-44 w-full rounded-lg" />
+          <Skeleton className="mt-4 h-32 w-full rounded-lg" />
         </div>
       </PageShell>
     );
@@ -107,7 +113,7 @@ export default function FlightDetail() {
   }
 
   const cheapest = flight.offers[0];
-  const cheapestUrl = cheapest ? safeExternalUrl(cheapest.bookingUrl) : undefined;
+  const cheapestUrl = cheapest ? offerHref(cheapest, "detail") : undefined;
   const relative = relativeDayLabel(flight.departAt);
   const isSaved = saved.savedKeys.has(flight.id);
   const savePending = saved.pending.has(flight.id);
@@ -131,21 +137,37 @@ export default function FlightDetail() {
             </span>
           </p>
         </div>
-        {isAuthenticated ? (
-          <Button
-            variant="outline"
-            onClick={() => void saved.toggle(flight)}
-            disabled={savePending}
-            aria-pressed={isSaved}
-            className={cn(isSaved && "border-primary/40 text-primary")}
-          >
-            {savePending ? <Loader2 className="animate-spin" /> : <Heart className={cn(isSaved && "fill-current")} />}
-            {isSaved ? "ذخیره شده" : "ذخیره پرواز"}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <ShareButton
+            title={`${flight.airline} ${flight.flightNo}`}
+            text={`${flight.airline} ${flight.originCity} به ${flight.destinationCity}، ${formatJalaliWeekday(
+              flight.departAt,
+            )} ساعت ${formatTime(flight.departAt)}، از ${formatPrice(flight.bestPriceToman)} در پروازیاب`}
+          />
+          <PriceAlertButton
+            compact
+            originCode={flight.originCode}
+            destinationCode={flight.destinationCode}
+            date={epochToDateKey(flight.departAt)}
+            cabin={flight.cabin}
+            lowestPrice={flight.bestPriceToman}
+          />
+          {isAuthenticated ? (
+            <Button
+              variant="outline"
+              onClick={() => void saved.toggle(flight)}
+              disabled={savePending}
+              aria-pressed={isSaved}
+              className={cn(isSaved && "border-primary/40 text-primary")}
+            >
+              {savePending ? <Loader2 className="animate-spin" /> : <Heart className={cn(isSaved && "fill-current")} />}
+              {isSaved ? "ذخیره شده" : "ذخیره پرواز"}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
-      <section className="mt-5 rounded-xl border bg-card p-4 sm:p-6" aria-label="برنامه پرواز">
+      <section className="mt-5 rounded-lg border bg-card p-4 sm:p-6" aria-label="برنامه پرواز">
         <FlightTimeline flight={flight} size="lg" />
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t pt-4">
           <Badge variant="secondary">{flight.cabin === "business" ? "بیزینس" : "اکونومی"}</Badge>
@@ -172,16 +194,26 @@ export default function FlightDetail() {
       <section className="mt-6" aria-labelledby="offers-heading">
         <h2 id="offers-heading" className="flex items-center gap-2 text-lg font-bold">
           <Building2 className="size-5 text-primary" aria-hidden />
-          قیمت در {toFaDigits(flight.agencyCount)} آژانس
+          {flight.offers.length === flight.agencyCount
+            ? `قیمت در ${toFaDigits(flight.agencyCount)} آژانس`
+            : `${toFaDigits(flight.offers.length)} پیشنهاد از ${toFaDigits(flight.agencyCount)} آژانس`}
         </h2>
-        <ul className="mt-3 divide-y overflow-hidden rounded-xl border bg-card">
+        <ul className="mt-3 divide-y overflow-hidden rounded-lg border bg-card">
           {flight.offers.map((o, i) => {
-            const url = safeExternalUrl(o.bookingUrl);
+            const url = offerHref(o, "detail");
             return (
-              <li key={`${o.agencyName}-${i}`} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <li key={o.listingId} className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
-                  <div className="truncate font-medium">{o.agencyName}</div>
-                  {i === 0 && flight.agencyCount > 1 ? (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
+                    <AgencyName
+                      name={o.agencyName}
+                      slug={o.agencySlug}
+                      verified={o.agencyVerified}
+                      rating={o.agencyRating}
+                    />
+                    <OfferTags offer={o} />
+                  </div>
+                  {i === 0 && flight.offers.length > 1 ? (
                     <div className="text-xs font-medium text-success">ارزان‌ترین پیشنهاد</div>
                   ) : null}
                 </div>
@@ -192,7 +224,7 @@ export default function FlightDetail() {
                   </div>
                   {url ? (
                     <Button asChild variant={i === 0 ? "default" : "outline"}>
-                      <a href={url} target="_blank" rel="noopener noreferrer">
+                      <a href={url} target="_blank" rel="noopener">
                         خرید از آژانس
                         <ExternalLink className="size-3.5" aria-hidden />
                         <span className="sr-only">({o.agencyName}، در پنجره جدید)</span>
@@ -204,10 +236,15 @@ export default function FlightDetail() {
             );
           })}
         </ul>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs leading-6 text-muted-foreground">
           خرید و صدور بلیط در سایت آژانس انجام می‌شود. قیمت نهایی را پیش از پرداخت در سایت آژانس بررسی کنید.
+          {flight.offers.some((o) => o.fareType === "charter")
+            ? " بلیط چارتری را چارترکننده می‌فروشد و معمولاً استرداد و تغییر آن محدودتر است؛ قوانین را پیش از خرید بخوانید."
+            : ""}
         </p>
       </section>
+
+      <RoutePriceTrend originCode={flight.originCode} destinationCode={flight.destinationCode} className="mt-8" />
 
       {similar.length > 0 ? (
         <section className="mt-8" aria-labelledby="similar-heading">
@@ -239,7 +276,7 @@ export default function FlightDetail() {
               <div className="truncate font-extrabold tabular-nums">{formatPrice(flight.bestPriceToman)}</div>
             </div>
             <Button asChild className="h-11 px-6">
-              <a href={cheapestUrl} target="_blank" rel="noopener noreferrer">
+              <a href={cheapestUrl} target="_blank" rel="noopener">
                 خرید بلیط
                 <ExternalLink className="size-3.5" aria-hidden />
               </a>

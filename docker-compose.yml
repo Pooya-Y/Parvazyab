@@ -1,3 +1,26 @@
+# Shared by the API and the worker (same image, same configuration).
+x-app-environment: &app-environment
+  NODE_ENV: production
+  PORT: 4000
+  DATABASE_URL: postgres://parvazyab:${POSTGRES_PASSWORD:-parvazyab}@postgres:5432/parvazyab
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
+  CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:8080}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+  APP_URL: ${APP_URL:-http://localhost:8080}
+  MAIL_TRANSPORT: ${MAIL_TRANSPORT:-console}
+  SMTP_URL: ${SMTP_URL:-}
+  MAIL_FROM: ${MAIL_FROM:-}
+  SMS_TRANSPORT: ${SMS_TRANSPORT:-console}
+  KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY:-}
+  KAVENEGAR_TEMPLATE: ${KAVENEGAR_TEMPLATE:-}
+  VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+  VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+  VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -30,17 +53,8 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: 4000
-      DATABASE_URL: postgres://parvazyab:${POSTGRES_PASSWORD:-parvazyab}@postgres:5432/parvazyab
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
-      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:8080}
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    image: parvazyab-server
+    environment: *app-environment
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,6 +62,26 @@ services:
         condition: service_healthy
     expose:
       - "4000"
+    restart: unless-stopped
+
+  # Background jobs (price snapshots, maintenance). Starts once the API has applied migrations.
+  worker:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: parvazyab-server
+    command: ["node", "dist/worker.js"]
+    environment: *app-environment
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      # The worker touches this file every 30s; a stale file means it's stuck.
+      test: ["CMD-SHELL", "find /tmp/parvazyab-worker-heartbeat -mmin -2 | grep -q ."]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
     restart: unless-stopped
 
   client:
@@ -59,6 +93,16 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Opt-in mail catcher for trying the email flows locally:
+  #   docker compose --profile mail up -d
+  # with MAIL_TRANSPORT=smtp and SMTP_URL=smtp://mailpit:1025 in .env; the inbox is at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31
+    profiles: ["mail"]
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
     restart: unless-stopped
 
 volumes:

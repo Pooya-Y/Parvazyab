@@ -8,7 +8,7 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import jwt from "jsonwebtoken";
 import { createApp } from "./app";
-import { config, parseConfig } from "./config/env";
+import { config, ConfigError, parseConfig } from "./config/env";
 
 let server: Server;
 let base: string;
@@ -93,4 +93,42 @@ test("production refuses placeholder JWT secrets", () => {
     parseConfig({ NODE_ENV: "production", JWT_SECRET: "replace-this-in-production-with-a-long-random-secret" }),
   );
   assert.doesNotThrow(() => parseConfig({ NODE_ENV: "production", JWT_SECRET: "k".repeat(48) }));
+});
+
+test("configuration problems are all named at once, without repeating values", () => {
+  const secret = "too-short";
+  assert.throws(
+    () => parseConfig({ JWT_SECRET: secret, ADMIN_PASSWORD: "tiny", MAIL_TRANSPORT: "smtp" }),
+    (err: unknown) => {
+      assert.ok(err instanceof ConfigError);
+      assert.match(err.message, /JWT_SECRET must be at least 32 characters \(it has 9\); generate one with/);
+      assert.match(err.message, /ADMIN_PASSWORD must be at least 12 characters/);
+      assert.ok(!err.message.includes(secret) && !err.message.includes("tiny"));
+      return true;
+    },
+  );
+  // Checks that need the parsed values report together too.
+  assert.throws(
+    () => parseConfig({ MAIL_TRANSPORT: "smtp", SMS_TRANSPORT: "kavenegar" }),
+    (err: unknown) => err instanceof ConfigError && err.problems.length === 2,
+  );
+});
+
+test("mail, SMS and push transports are checked at startup", () => {
+  assert.throws(() => parseConfig({ MAIL_TRANSPORT: "smtp" }), /SMTP_URL/);
+  assert.throws(() => parseConfig({ SMS_TRANSPORT: "kavenegar" }), /KAVENEGAR_API_KEY/);
+  assert.throws(() => parseConfig({ MAIL_TRANSPORT: "memory" }), /only for tests/);
+  assert.throws(() => parseConfig({ PUSH_TRANSPORT: "webpush" }), /VAPID/);
+  // Compose passes unset variables as empty strings.
+  assert.equal(parseConfig({ SMTP_URL: "", APP_URL: "" }).APP_URL, "http://localhost:8080");
+});
+
+test("push switches itself on only with a VAPID key pair", () => {
+  assert.equal(parseConfig({}).PUSH_TRANSPORT, "off");
+  assert.equal(parseConfig({ VAPID_PUBLIC_KEY: "pub" }).PUSH_TRANSPORT, "off");
+  assert.equal(parseConfig({ VAPID_PUBLIC_KEY: "pub", VAPID_PRIVATE_KEY: "priv" }).PUSH_TRANSPORT, "webpush");
+  assert.equal(
+    parseConfig({ VAPID_PUBLIC_KEY: "pub", VAPID_PRIVATE_KEY: "priv", PUSH_TRANSPORT: "off" }).PUSH_TRANSPORT,
+    "off",
+  );
 });

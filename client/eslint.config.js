@@ -28,6 +28,8 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
+      // Allow `const { omitted, ...rest } = obj` to drop keys.
+      "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }],
     },
   },
 );

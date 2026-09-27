@@ -1,6 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  startTransition,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { api } from "@/lib/api";
 import { invalidate } from "@/lib/use-api-query";
+import { disablePush } from "@/lib/push";
 import type { User } from "@/lib/types";
 
 interface AuthContextValue {
@@ -10,9 +20,15 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<User>;
   signUp: (name: string, email: string, password: string) => Promise<User>;
   signInAsGuest: () => Promise<User>;
-  signOut: () => Promise<void>;
+  /**
+   * Ends the session. `leave` (usually a navigation) commits together with the
+   * signed-out state, so a protected page never redirects to sign-in on the way out.
+   */
+  signOut: (leave?: () => void) => Promise<void>;
   /** Re-read the session (e.g. after the account's role changed). */
   refresh: () => Promise<void>;
+  /** Adopt the user an API call returned (password reset signs in; profile edits update it). */
+  applyUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -62,14 +78,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn: async (email, password) => accept((await api.auth.login(email, password)).user),
       signUp: async (name, email, password) => accept((await api.auth.register(name, email, password)).user),
       signInAsGuest: async () => accept((await api.auth.guest()).user),
-      signOut: async () => {
+      signOut: async (leave) => {
         try {
+          // A shared device must stop getting this account's notifications.
+          await disablePush().catch(() => undefined);
           await api.auth.logout();
         } finally {
-          setUser(null);
+          // The router updates location in a transition; clearing the user in the
+          // same one keeps RequireAuth from seeing "signed out" on the old page.
+          startTransition(() => {
+            leave?.();
+            setUser(null);
+          });
         }
       },
       refresh,
+      applyUser: accept,
     };
   }, [user, isLoading, refresh]);
 

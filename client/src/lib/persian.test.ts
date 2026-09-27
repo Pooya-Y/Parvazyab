@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   addDaysToKey,
   arrivalDayOffset,
+  dayDiff,
   epochToDateKey,
   formatDateKey,
   formatDuration,
   formatJalaliDate,
   formatStops,
   formatTime,
+  formatThousandToman,
   formatToman,
   formatTomanCompact,
   gregorianToJalali,
@@ -73,6 +75,11 @@ describe("date keys", () => {
     expect(isValidDateKey(null)).toBe(false);
   });
 
+  it("counts whole days between keys", () => {
+    expect(dayDiff("2025-12-30", "2026-01-02")).toBe(3);
+    expect(dayDiff("2026-01-02", "2025-12-30")).toBe(-3);
+  });
+
   it("adds days across month and year boundaries", () => {
     expect(addDaysToKey("2025-12-31", 1)).toBe("2026-01-01");
     expect(addDaysToKey("2025-03-01", -1)).toBe("2025-02-28");
@@ -123,6 +130,8 @@ describe("number and text formatting", () => {
     expect(formatToman(999.6)).toBe("۱٬۰۰۰");
     expect(formatTomanCompact(2_500_000)).toBe("۲٫۵ میلیون تومان");
     expect(formatTomanCompact(980_000)).toBe("۹۸۰ هزار تومان");
+    expect(formatThousandToman(2_450_000)).toBe("۲٬۴۵۰");
+    expect(formatThousandToman(14_500_000)).toBe("۱۴٬۵۰۰");
   });
 
   it("formats durations and stops", () => {

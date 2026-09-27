@@ -21,7 +21,7 @@ export function StateMessage({
 }) {
   return (
     <Empty
-      className={cn("rounded-xl border bg-card px-4 py-10", className)}
+      className={cn("rounded-lg border bg-card px-4 py-10", className)}
       role={tone === "error" ? "alert" : undefined}
     >
       <EmptyHeader>

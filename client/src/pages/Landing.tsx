@@ -1,15 +1,19 @@
 import { PageShell } from "@/components/layout/PageShell";
 import { SearchWidget } from "@/components/flights/SearchWidget";
+import { DestinationList, DestinationListSkeleton } from "@/components/explore/DestinationList";
+import { Segmented } from "@/components/Segmented";
+import { RecentSearches } from "@/components/flights/RecentSearches";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { useApiQuery } from "@/lib/use-api-query";
-import { airportShortCity } from "@/domain/airports";
+import { airportDistinctName, airportShortCity } from "@/domain/airports";
 import { searchUrl } from "@/lib/search-state";
 import { toFaDigits } from "@/lib/persian";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { ArrowLeft, BadgeCheck, Filter, Heart, LineChart, Store, TrendingDown } from "lucide-react";
 import { Link } from "react-router";
+import { useState } from "react";
 
 function PopularRoutes() {
   const { data: routes, isLoading } = useApiQuery("popular-routes", (signal) => api.popularRoutes(signal));
@@ -18,7 +22,7 @@ function PopularRoutes() {
     return (
       <div className="flex flex-wrap justify-center gap-2" aria-hidden>
         {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-9 w-32 rounded-full" />
+          <Skeleton key={i} className="h-9 w-32 rounded-md" />
         ))}
       </div>
     );
@@ -33,7 +37,7 @@ function PopularRoutes() {
         <Link
           key={`${r.originCode}-${r.destinationCode}`}
           to={searchUrl({ from: r.originCode, to: r.destinationCode })}
-          className="inline-flex min-h-9 items-center rounded-full border bg-card px-3.5 text-sm transition-colors hover:border-primary/40 hover:bg-accent"
+          className="inline-flex min-h-9 items-center rounded-md border bg-card px-3.5 text-sm transition-colors hover:border-primary/40 hover:bg-accent"
         >
           {airportShortCity(r.originCode)}
           <ArrowLeft className="mx-1.5 size-3.5 text-muted-foreground" aria-hidden />
@@ -42,6 +46,52 @@ function PopularRoutes() {
         </Link>
       ))}
     </nav>
+  );
+}
+
+const TEASER_ORIGINS = ["THR", "IKA", "MHD", "SYZ"];
+
+/** Top five cheapest destinations from a few big airports, linking to the full explore page. */
+function CheapDestinations() {
+  const [origin, setOrigin] = useState("THR");
+  const query = useApiQuery(`explore:${origin}:30:all`, (signal) => api.explore(origin, 30, "all", signal));
+  const top = query.data?.destinations.slice(0, 5) ?? [];
+
+  return (
+    <section className="container-page py-12 sm:py-16" aria-labelledby="cheap-heading">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="cheap-heading" className="text-xl font-bold sm:text-2xl">
+            ارزان‌ترین مقصدها در ۳۰ روز آینده
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">کمترین قیمت بلیط اکونومی به هر مقصد</p>
+        </div>
+        <Segmented
+          legend="مبدا"
+          options={TEASER_ORIGINS.map((code) => ({ value: code, label: `از ${airportDistinctName(code)}` }))}
+          value={origin}
+          onChange={setOrigin}
+          className="max-w-full overflow-x-auto"
+        />
+      </div>
+      <div className="mt-5">
+        {query.error && !query.data ? (
+          <p className="text-sm text-muted-foreground">فهرست مقصدها الان در دسترس نیست.</p>
+        ) : query.isLoading ? (
+          <DestinationListSkeleton rows={5} />
+        ) : top.length ? (
+          <DestinationList originCode={origin} destinations={top} compact fetching={query.isFetching} />
+        ) : (
+          <p className="text-sm text-muted-foreground">فعلاً پروازی از {airportDistinctName(origin)} ثبت نشده است.</p>
+        )}
+      </div>
+      <Button asChild variant="outline" className="mt-4">
+        <Link to={`/explore?from=${origin}`}>
+          همه مقصدها از {airportDistinctName(origin)}
+          <ArrowLeft aria-hidden />
+        </Link>
+      </Button>
+    </section>
   );
 }
 
@@ -102,12 +152,15 @@ export default function Landing() {
 
           <div className="mx-auto mt-6 max-w-5xl sm:mt-8">
             <SearchWidget />
-            <div className="mt-5">
+            <div className="mt-5 space-y-5">
+              <RecentSearches />
               <PopularRoutes />
             </div>
           </div>
         </div>
       </section>
+
+      <CheapDestinations />
 
       <section className="container-page py-12 sm:py-16" aria-labelledby="how-heading">
         <h2 id="how-heading" className="text-center text-xl font-bold sm:text-2xl">
@@ -115,7 +168,7 @@ export default function Landing() {
         </h2>
         <ol className="mt-8 grid gap-4 sm:grid-cols-3 sm:gap-6">
           {STEPS.map((s, i) => (
-            <li key={s.title} className="rounded-xl border bg-card p-5">
+            <li key={s.title} className="rounded-lg border bg-card p-5">
               <span className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-sm font-bold text-primary">
                 {toFaDigits(i + 1)}
               </span>
@@ -146,7 +199,7 @@ export default function Landing() {
       </section>
 
       <section className="container-page py-12 sm:py-16" aria-labelledby="agency-heading">
-        <div className="flex flex-col items-start justify-between gap-6 rounded-xl border bg-card p-6 sm:p-8 md:flex-row md:items-center">
+        <div className="flex flex-col items-start justify-between gap-6 rounded-lg border bg-card p-6 sm:p-8 md:flex-row md:items-center">
           <div className="max-w-xl">
             <h2 id="agency-heading" className="text-xl font-bold sm:text-2xl">
               آژانس مسافرتی دارید؟
@@ -167,7 +220,7 @@ export default function Landing() {
             </ul>
           </div>
           <Button size="lg" asChild className="w-full shrink-0 md:w-auto">
-            <Link to="/auth?returnTo=%2Fdashboard%3Ftab%3Dagency">
+            <Link to="/auth?returnTo=%2Fdashboard">
               ثبت‌نام آژانس
               <ArrowLeft aria-hidden />
             </Link>

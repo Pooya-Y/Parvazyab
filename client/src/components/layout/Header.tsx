@@ -8,8 +8,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "@/components/alerts/NotificationBell";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronDown, Heart, LayoutDashboard, LogIn, LogOut, Plane, UserRound } from "lucide-react";
+import { ChevronDown, Heart, LayoutDashboard, LogIn, LogOut, Plane, UserCog, UserRound } from "lucide-react";
+import { isGuest } from "@/lib/account";
+import { formatMobile } from "@/lib/phone";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
@@ -32,8 +35,7 @@ function AccountMenu() {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      navigate("/");
+      await signOut(() => navigate("/"));
     } catch {
       toast.error("خروج انجام نشد. دوباره تلاش کنید.");
     }
@@ -51,9 +53,9 @@ function AccountMenu() {
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuLabel className="truncate font-normal">
           <span className="block truncate font-semibold">{displayName}</span>
-          {user.email.endsWith("@guest.parvazyab.local") ? null : (
+          {isGuest(user) ? null : (
             <span className="block truncate text-xs text-muted-foreground" dir="ltr">
-              {user.email}
+              {user.email ?? (user.phone ? formatMobile(user.phone) : null)}
             </span>
           )}
         </DropdownMenuLabel>
@@ -65,9 +67,15 @@ function AccountMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/dashboard?tab=saved">
+          <Link to="/dashboard/saved">
             <Heart aria-hidden />
             پروازهای ذخیره‌شده
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard/account">
+            <UserCog aria-hidden />
+            تنظیمات حساب
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -104,9 +112,15 @@ export function Header() {
             <Button variant="ghost" size="sm" asChild>
               <Link to="/">جستجوی پرواز</Link>
             </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/explore">مقصدهای ارزان</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/agencies">آژانس‌ها</Link>
+            </Button>
             {isAuthenticated && (
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/dashboard?tab=saved">ذخیره‌شده‌ها</Link>
+                <Link to="/dashboard/saved">ذخیره‌شده‌ها</Link>
               </Button>
             )}
           </nav>
@@ -114,6 +128,7 @@ export function Header() {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <ThemeToggle />
+          {isAuthenticated ? <NotificationBell /> : null}
           {isLoading ? (
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted" aria-hidden />
           ) : isAuthenticated ? (

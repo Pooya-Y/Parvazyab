@@ -9,7 +9,7 @@ export default function NotFound() {
   return (
     <PageShell className="flex items-center justify-center px-4 py-16">
       <div className="text-center">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <PlaneTakeoff className="size-7" aria-hidden />
         </div>
         <p className="mt-4 text-4xl font-extrabold">۴۰۴</p>

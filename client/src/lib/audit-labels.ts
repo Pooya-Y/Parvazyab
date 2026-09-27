@@ -1,0 +1,29 @@
+/** Persian names for audit log actions (the server's AUDIT_ACTIONS). */
+export const AUDIT_LABELS: Record<string, string> = {
+  "auth.password_reset_requested": "درخواست بازیابی رمز عبور",
+  "auth.password_reset": "بازیابی رمز عبور",
+  "auth.password_changed": "تغییر رمز عبور",
+  "auth.email_verified": "تأیید ایمیل",
+  "auth.sessions_revoked": "خروج از دستگاه‌های دیگر",
+  "account.profile_updated": "ویرایش نام",
+  "account.became_agency": "آژانس شدن",
+  "account.phone_linked": "افزودن شمارهٔ موبایل",
+  "account.phone_removed": "حذف شمارهٔ موبایل",
+  "account.email_added": "افزودن ایمیل",
+  "api_key.created": "ساخت کلید API",
+  "api_key.revoked": "ابطال کلید API",
+  "listing.imported": "ورود گروهی پروازها",
+  "admin.role_changed": "تغییر نقش",
+  "admin.account_suspended": "تعلیق حساب",
+  "admin.account_restored": "رفع تعلیق حساب",
+  "admin.listing_suspended": "تعلیق پرواز",
+  "admin.listing_restored": "رفع تعلیق پرواز",
+  "admin.agency_verified": "تأیید آژانس",
+  "admin.agency_unverified": "رد یا لغو تأیید آژانس",
+  "admin.review_hidden": "پنهان کردن نظر",
+  "admin.review_restored": "نمایش دوبارهٔ نظر",
+  "admin.reports_dismissed": "رد گزارش‌های یک نظر",
+  "agency.verification_requested": "درخواست تأیید آژانس",
+};
+
+export const auditLabel = (action: string) => AUDIT_LABELS[action] ?? action;

@@ -16,17 +16,38 @@ export interface Listing {
   arriveAt: number;
   durationMin: number;
   stops: number;
-  cabin: "economy" | "business";
+  cabin: Cabin;
+  fareType: FareType;
   priceToman: number;
   bookingUrl: string;
   isActive: boolean;
   agencyName: string;
+  /** Public profile address, verification and rating, when known. */
+  agencySlug?: string | null;
+  agencyVerified?: boolean;
+  agencyRating?: AgencyRating | null;
 }
 
+export type Cabin = "economy" | "business";
+
+export interface AgencyRating {
+  average: number;
+  count: number;
+}
+export type FareType = "scheduled" | "charter";
+
+/** One agency's price for a flight (a single listing). */
 export interface FlightOffer {
+  listingId: string;
+  agencyId: string;
   agencyName: string;
+  cabin: Cabin;
+  fareType: FareType;
   priceToman: number;
   bookingUrl: string;
+  agencySlug?: string | null;
+  agencyVerified?: boolean;
+  agencyRating?: AgencyRating | null;
 }
 
 /** One real-world flight, possibly sold by several agencies. */
@@ -42,10 +63,13 @@ export interface FlightCard {
   arriveAt: number;
   durationMin: number;
   stops: number;
-  cabin: "economy" | "business";
+  /** Cabin of the cheapest offer. */
+  cabin: Cabin;
   bestPriceToman: number;
   priceRange: { min: number; max: number };
+  /** Distinct agencies selling this flight. */
   agencyCount: number;
+  /** Cheapest first. */
   offers: FlightOffer[];
   score?: number;
   scoreBreakdown?: ScoreBreakdown;
@@ -93,34 +117,69 @@ export function groupOffersByFlight(offers: Listing[]): FlightCard[] {
   return [...byKey.values()].map(buildFlightFromOffers);
 }
 
-function buildFlightFromOffers(offers: Listing[]): FlightCard {
-  const sorted = [...offers].sort((a, b) => a.priceToman - b.priceToman);
-  const cheapest = sorted[0];
-  return {
-    id: buildFlightIdentityKey(cheapest),
-    airline: cheapest.airline,
-    flightNo: cheapest.flightNo,
-    originCode: cheapest.originCode,
-    originCity: cheapest.originCity,
-    destinationCode: cheapest.destinationCode,
-    destinationCity: cheapest.destinationCity,
-    departAt: cheapest.departAt,
-    arriveAt: cheapest.arriveAt,
-    durationMin: cheapest.durationMin,
-    stops: cheapest.stops,
-    cabin: cheapest.cabin,
-    bestPriceToman: cheapest.priceToman,
-    priceRange: {
-      min: sorted[0].priceToman,
-      max: sorted[sorted.length - 1].priceToman,
-    },
-    agencyCount: offers.length,
-    offers: sorted.map((o) => ({
-      agencyName: o.agencyName,
-      priceToman: o.priceToman,
-      bookingUrl: o.bookingUrl,
-    })),
+function buildFlightFromOffers(listings: Listing[]): FlightCard {
+  const sorted = [...listings].sort((a, b) => a.priceToman - b.priceToman);
+  const first = sorted[0];
+  const card: FlightCard = {
+    id: buildFlightIdentityKey(first),
+    airline: first.airline,
+    flightNo: first.flightNo,
+    originCode: first.originCode,
+    originCity: first.originCity,
+    destinationCode: first.destinationCode,
+    destinationCity: first.destinationCity,
+    departAt: first.departAt,
+    arriveAt: first.arriveAt,
+    durationMin: first.durationMin,
+    stops: first.stops,
+    cabin: first.cabin,
+    bestPriceToman: first.priceToman,
+    priceRange: { min: first.priceToman, max: first.priceToman },
+    agencyCount: 0,
+    offers: [],
   };
+  return withOffers(
+    card,
+    sorted.map((l) => ({
+      listingId: l.id,
+      agencyId: l.accountId,
+      agencyName: l.agencyName,
+      cabin: l.cabin,
+      fareType: l.fareType,
+      priceToman: l.priceToman,
+      bookingUrl: l.bookingUrl,
+      ...(l.agencySlug === undefined
+        ? {}
+        : {
+            agencySlug: l.agencySlug,
+            agencyVerified: l.agencyVerified ?? false,
+            agencyRating: l.agencyRating ?? null,
+          }),
+    })),
+  );
+}
+
+/** Recompute the card's price summary for a (price-sorted, non-empty) set of offers. */
+function withOffers(card: FlightCard, offers: FlightOffer[]): FlightCard {
+  return {
+    ...card,
+    cabin: offers[0].cabin,
+    bestPriceToman: offers[0].priceToman,
+    priceRange: { min: offers[0].priceToman, max: offers[offers.length - 1].priceToman },
+    agencyCount: new Set(offers.map((o) => o.agencyId)).size,
+    offers,
+  };
+}
+
+/**
+ * Narrow a card to the offers matching `keep`, recomputing its price summary, or
+ * drop it (null) when none match. One flight can be sold in several cabins, so
+ * cabin is an offer-level property, not a card-level one.
+ */
+export function restrictOffers(card: FlightCard, keep: (offer: FlightOffer) => boolean): FlightCard | null {
+  const offers = card.offers.filter(keep);
+  if (offers.length === 0) return null;
+  return offers.length === card.offers.length ? card : withOffers(card, offers);
 }
 
 export interface HourWindow {
@@ -139,7 +198,10 @@ export interface SearchFilters {
   /** Inclusive Tehran-time hour window. */
   departWindow?: HourWindow;
   arriveWindow?: HourWindow;
-  cabin?: "economy" | "business";
+  /** Offer-level: keeps only offers in this cabin. */
+  cabin?: Cabin;
+  /** Offer-level: keeps only charter or only scheduled offers. */
+  fareType?: FareType;
 }
 
 function inWindow(epochMs: number, w: HourWindow): boolean {
@@ -149,7 +211,18 @@ function inWindow(epochMs: number, w: HourWindow): boolean {
 }
 
 export function applyFilters(flights: FlightCard[], f: SearchFilters): FlightCard[] {
-  return flights.filter((fl) => {
+  // Offer-level filters first, so price filters below see the narrowed best price.
+  const offerFiltered =
+    f.cabin || f.fareType
+      ? flights.flatMap(
+          (card) =>
+            restrictOffers(
+              card,
+              (o) => (!f.cabin || o.cabin === f.cabin) && (!f.fareType || o.fareType === f.fareType),
+            ) ?? [],
+        )
+      : flights;
+  return offerFiltered.filter((fl) => {
     if (f.airlines && f.airlines.length > 0 && !f.airlines.includes(fl.airline)) return false;
     if (f.maxStops !== undefined && fl.stops > f.maxStops) return false;
     if (f.directOnly && fl.stops !== 0) return false;
@@ -157,7 +230,6 @@ export function applyFilters(flights: FlightCard[], f: SearchFilters): FlightCar
     if (f.minPriceToman !== undefined && fl.bestPriceToman < f.minPriceToman) return false;
     if (f.maxDurationMin !== undefined && fl.durationMin > f.maxDurationMin) return false;
     if (f.minDurationMin !== undefined && fl.durationMin < f.minDurationMin) return false;
-    if (f.cabin && fl.cabin !== f.cabin) return false;
     if (f.departWindow && !inWindow(fl.departAt, f.departWindow)) return false;
     if (f.arriveWindow && !inWindow(fl.arriveAt, f.arriveWindow)) return false;
     return true;
