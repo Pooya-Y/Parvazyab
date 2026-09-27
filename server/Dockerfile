@@ -25,6 +25,8 @@ COPY --from=build /app/server/dist ./server/dist
 WORKDIR /app/server
 USER node
 EXPOSE 4000
-HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=6 \
+# Startup runs migrations and the demo seed; a cold first boot on a busy host can take a couple of minutes,
+# and the worker and nginx wait for this check before starting.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=120s --retries=6 \
   CMD wget -qO- http://127.0.0.1:4000/api/health >/dev/null || exit 1
 CMD ["node", "dist/server.js"]
