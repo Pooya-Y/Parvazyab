@@ -200,7 +200,7 @@ export default function Landing() {
       </section>
 
       <section className="container-page" aria-labelledby="why-heading">
-        <div className="rounded-lg border bg-muted/30 px-5 py-8 sm:px-8 sm:py-10">
+        <div className="rounded-lg border bg-card px-5 py-8 sm:px-8 sm:py-10">
           <h2 id="why-heading" className="text-center text-xl font-bold sm:text-2xl">
             چرا پروازیاب؟
           </h2>
