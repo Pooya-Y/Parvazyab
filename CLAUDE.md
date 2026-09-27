@@ -119,6 +119,11 @@ token travels in the URL fragment.
 called on every page load and must not be behind one. Security and admin actions are written to the audit log
 (`services/audit.ts`, action names in `AUDIT_ACTIONS`, IPs HMAC-hashed).
 
+Travellers report offers that don't match the agency's site (`services/listingReports.ts`,
+`POST /api/listings/:id/reports`; one open report per person and offer). The moderation queue groups open reports per
+visible offer; suspending the listing (by any admin path — `setListingSuspension` calls `resolveListingReports`) or
+dismissing its reports closes them and notifies each reporter.
+
 ### Notifications and outbound links
 
 `services/notifications.ts#notify` writes the in-app inbox row and then emails (verified addresses only) and pushes
