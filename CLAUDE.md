@@ -79,7 +79,11 @@ one finishes.
    `airline__flightNo__departureMinute`, and that string is also the flight `id` used in URLs and stored as `flightKey`
    for saved flights — changing the format breaks saved flights and shared links.
 3. `applyFilters` → `rankFlights` (score from `domain/rankingWeights.ts`, plus Persian badges and "why" reasons computed
-   relative to the filtered set) → `sortFlights`.
+   relative to the filtered set) → `sortFlights` → `pairableFirst` (round trips: flights that can't pair with the other
+   leg's choice, per `departFrom`/`arriveBy`, go last). Only then is the page cut: `/api/search` answers
+   `{ flights, total, offset, limit, minPrice }`, ten by default (`limit` up to 100), so ranking, `total` and `minPrice`
+   always describe the whole result set. A single flight comes from `/api/flights/:origin-:dest/:id` (`date` ranks it
+   within its day).
 4. Derived data (price calendar, 60-day trend, cheapest destinations, route guides) is cached under the same `search:`
    prefix. Every listing write must call `invalidate(SEARCH_CACHE_PREFIX)` (see `services/accountService.ts`).
 
@@ -153,7 +157,8 @@ they drift. The SPA must link to these pages with a plain `<a href>`, not a rout
 - `/dashboard` is nested routes (`pages/dashboard/`) guarded by `RequireAuth`/`RequireRole`.
 - Search state lives in the URL. `lib/search-state.ts` parses and serializes it and maps it to API params.
   `pages/Search.tsx` remounts the results per route so a new route shows skeletons instead of the previous route's
-  flights.
+  flights. `lib/use-paged-search.ts` fetches results ten at a time as the list's end scrolls into view; the client never
+  holds every result, so counts and the lowest fare come from the response, and round-trip choices are looked up by id.
 - PWA: `public/sw.js` is hand-written (network-first pages with the shell as offline fallback, cache-first hashed
   assets, API never cached, push display) and `lib/pwa.ts` registers it in production builds only.
 
