@@ -16,6 +16,7 @@ import {
   setListingSuspension,
   setReviewStatus,
 } from "../services/moderation";
+import { dismissListingReports } from "../services/listingReports";
 import { ownProfile, replyToReview, reviewsForAgency, updateAgencyProfile } from "../services/agencies";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/apiKeys";
 import { csvToRows, listingsCsv, planImport, templateCsv } from "../services/listingImport";
@@ -294,6 +295,12 @@ adminRoutes.get("/listings", async (req, res) => {
 
 adminRoutes.put("/listings/:id/suspension", async (req, res) => {
   await setListingSuspension(sessionUser(res), uuidParam.parse(req.params.id), suspensionSchema.parse(req.body), req);
+  res.json({ ok: true });
+});
+
+/** Travellers' reports on an offer weren't borne out: close them and keep the offer. (Suspending closes them too.) */
+adminRoutes.post("/listings/:id/dismiss-reports", async (req, res) => {
+  await dismissListingReports(sessionUser(res), uuidParam.parse(req.params.id), req);
   res.json({ ok: true });
 });
 

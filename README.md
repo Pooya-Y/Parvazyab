@@ -10,7 +10,8 @@ A Persian (RTL) flight-price comparison site: one card per real flight, with the
   agency profiles with reviews. Sign in by SMS code or email and password (with verification and reset).
 - **Agencies:** listings by form, CSV/JSON import and export (Jalali dates accepted), an API with keys and an
   OpenAPI document, buy-click analytics, a public profile, replies to reviews, and verification requests.
-- **Administrators:** suspension of accounts and listings, review reports, agency verification and an audit log.
+- **Administrators:** suspension of accounts and listings, travellers' reports on offers (e.g. a price that differs
+  from the agency's site) and on reviews, agency verification and an audit log.
 - **Everyone:** an installable app that opens offline, and server-rendered route guides (`/flights/thr-mhd`)
   with a sitemap for search engines.
 

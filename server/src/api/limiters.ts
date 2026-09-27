@@ -26,6 +26,9 @@ export const resetRequestLimiter = limiter(15, 8);
 /** Guest accounts are cheap to create. */
 export const guestLimiter = limiter(60, 10);
 
+/** Reporting offers: plenty for a traveller, not enough to flood the moderation queue. */
+export const reportLimiter = limiter(60, 30);
+
 /**
  * Each code is an SMS we pay for. Per-number limits (auth/otp.ts) stop
  * harassment of one number; this stops one client spraying many numbers.

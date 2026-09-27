@@ -3,6 +3,7 @@ import { AgencyName } from "@/components/agencies/AgencyBits";
 import { ArrowRight, Building2, ExternalLink, Heart, Info, Loader2, RotateCcw, SearchX, WifiOff } from "lucide-react";
 import { PageShell } from "@/components/layout/PageShell";
 import { FlightCard, FlightTimeline, OfferTags } from "@/components/flights/FlightCard";
+import { ReportOfferButton } from "@/components/flights/ReportOfferButton";
 import { StateMessage } from "@/components/StateMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -237,13 +238,15 @@ export default function FlightDetail() {
                       </a>
                     </Button>
                   ) : null}
+                  <ReportOfferButton offer={o} />
                 </div>
               </li>
             );
           })}
         </ul>
         <p className="mt-2 text-xs leading-6 text-muted-foreground">
-          خرید و صدور بلیط در سایت آژانس انجام می‌شود. قیمت نهایی را پیش از پرداخت در سایت آژانس بررسی کنید.
+          خرید و صدور بلیط در سایت آژانس انجام می‌شود. قیمت نهایی را پیش از پرداخت در سایت آژانس بررسی کنید؛ اگر با
+          اینجا نمی‌خواند، پیشنهاد را گزارش کنید.
           {flight.offers.some((o) => o.fareType === "charter")
             ? " بلیط چارتری را چارترکننده می‌فروشد و معمولاً استرداد و تغییر آن محدودتر است؛ قوانین را پیش از خرید بخوانید."
             : ""}

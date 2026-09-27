@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { BadgeCheck, EyeOff, Flag, Loader2, ShieldCheck, X } from "lucide-react";
+import { Ban, BadgeCheck, ExternalLink, EyeOff, Flag, Loader2, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { ReasonDialog, type ReasonRequest } from "@/components/admin/ReasonDialog";
 import { StarRow } from "@/components/agencies/Stars";
@@ -8,14 +8,17 @@ import { LoadError } from "@/components/dashboard/common";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { api } from "@/lib/api";
+import { api, safeExternalUrl } from "@/lib/api";
+import { airportShortCity } from "@/domain/airports";
 import { errorMessage } from "@/lib/errors";
-import { formatRelativeTime, toFaDigits } from "@/lib/persian";
+import { reportReasonLabel, reportReasonShort } from "@/lib/listing-reports";
+import { formatJalaliWeekday, formatPrice, formatRelativeTime, formatTime, toFaDigits } from "@/lib/persian";
 import type { ModerationQueue } from "@/lib/types";
 import { useApiQuery } from "@/lib/use-api-query";
 
 type Request = ModerationQueue["verificationRequests"][number];
 type Reported = ModerationQueue["reportedReviews"][number];
+type ReportedOffer = ModerationQueue["reportedListings"][number];
 
 function Empty({ children }: { children: string }) {
   return <p className="rounded-lg border bg-card px-4 py-6 text-center text-sm text-muted-foreground">{children}</p>;
@@ -57,6 +60,37 @@ export default function ModerationPage() {
     reportedReviews: q.reportedReviews.filter((r) => r.reviewId !== id),
   });
 
+  const dropOffer = (id: string) => (q: ModerationQueue) => ({
+    ...q,
+    reportedListings: q.reportedListings.filter((l) => l.listingId !== id),
+    counts: { ...q.counts, suspendedListings: q.counts.suspendedListings + 1 },
+  });
+  const suspendOffer = (l: ReportedOffer) => {
+    // Left empty, the agency is told the reporters' main complaint.
+    const mainReason = reportReasonLabel(l.reasons[0]?.reason ?? "other");
+    setReason({
+      title: `پیشنهاد «${l.agencyName}» برای ${l.flightNo} معلق شود؟`,
+      description: "از همهٔ نتایج برداشته می‌شود؛ آژانس دلیل را می‌بیند و گزارش‌دهنده‌ها هم خبردار می‌شوند.",
+      confirmLabel: "تعلیق پیشنهاد",
+      fieldLabel: "دلیل برای آژانس (خالی بماند، دلیل اصلی گزارش‌ها فرستاده می‌شود)",
+      placeholder: mainReason,
+      run: (note) =>
+        act(
+          l.listingId,
+          () => api.admin.suspendListing(l.listingId, true, note || mainReason),
+          "پیشنهاد معلق شد",
+          dropOffer(l.listingId),
+        ),
+    });
+  };
+  const dismissOffer = (l: ReportedOffer) =>
+    void act(
+      l.listingId,
+      () => api.admin.dismissListingReports(l.listingId),
+      "گزارش‌ها رد شد",
+      (q) => ({ ...q, reportedListings: q.reportedListings.filter((x) => x.listingId !== l.listingId) }),
+    ).catch(() => undefined);
+
   const approve = (r: Request) =>
     void act(
       r.agencyId,
@@ -92,7 +126,7 @@ export default function ModerationPage() {
 
   if (queue.error && !queue.data) return <LoadError error={queue.error} onRetry={queue.refetch} />;
   if (!queue.data) return <Skeleton className="h-64 rounded-lg" aria-hidden />;
-  const { verificationRequests, reportedReviews, counts } = queue.data;
+  const { verificationRequests, reportedReviews, reportedListings, counts } = queue.data;
 
   return (
     <>
@@ -112,7 +146,103 @@ export default function ModerationPage() {
         ثبت می‌شود.
       </p>
 
-      <section aria-labelledby="verification-heading">
+      <section aria-labelledby="offers-heading">
+        <h3 id="offers-heading" className="mb-3 flex items-center gap-2 font-semibold">
+          <Flag className="size-4 text-muted-foreground" aria-hidden />
+          پیشنهادهای گزارش‌شده
+          {reportedListings.length ? (
+            <span className="rounded-[5px] bg-primary/10 px-1.5 text-xs text-primary tabular-nums">
+              {toFaDigits(reportedListings.length)}
+            </span>
+          ) : null}
+        </h3>
+        {reportedListings.length ? (
+          <ul className="divide-y rounded-lg border bg-card">
+            {reportedListings.map((l) => {
+              const site = safeExternalUrl(l.bookingUrl);
+              return (
+                <li key={l.listingId} className="space-y-2 p-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-semibold">
+                      {l.airline} <bdi className="font-mono text-sm">{l.flightNo}</bdi> ·{" "}
+                      {airportShortCity(l.originCode)} به {airportShortCity(l.destinationCode)}
+                    </p>
+                    <span className="text-xs text-muted-foreground">{formatRelativeTime(l.lastReportedAt, now)}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {formatJalaliWeekday(l.departAt)}، ساعت {formatTime(l.departAt)} ·{" "}
+                    {l.agencySlug ? (
+                      <Link
+                        to={`/agencies/${encodeURIComponent(l.agencySlug)}`}
+                        className="text-foreground underline-offset-4 hover:underline"
+                      >
+                        {l.agencyName}
+                      </Link>
+                    ) : (
+                      <span className="text-foreground">{l.agencyName}</span>
+                    )}{" "}
+                    · قیمت در پروازیاب{" "}
+                    <span className="font-medium text-foreground tabular-nums">{formatPrice(l.priceToman)}</span>
+                  </p>
+                  <p className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="text-muted-foreground">{toFaDigits(l.reports)} گزارش:</span>
+                    {l.reasons.map((r) => (
+                      <span key={r.reason} className="rounded-[5px] border px-1.5 py-0.5">
+                        {reportReasonShort(r.reason)}
+                        {r.count > 1 ? (
+                          <span className="ms-1 tabular-nums text-muted-foreground">×{toFaDigits(r.count)}</span>
+                        ) : null}
+                      </span>
+                    ))}
+                  </p>
+                  {l.notes.length ? (
+                    <ul className="space-y-1.5">
+                      {l.notes.map((n, i) => (
+                        <li key={i} className="border-s-2 ps-3 text-sm leading-7">
+                          {n.observedPrice ? (
+                            <span className="font-medium">
+                              قیمت در سایت آژانس: <span className="tabular-nums">{formatPrice(n.observedPrice)}</span>
+                              {n.note ? " · " : ""}
+                            </span>
+                          ) : null}
+                          {n.note}
+                          <span className="ms-2 text-xs text-muted-foreground">{formatRelativeTime(n.at, now)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => suspendOffer(l)}
+                      disabled={busy === l.listingId}
+                    >
+                      {busy === l.listingId ? <Loader2 className="animate-spin" aria-hidden /> : <Ban aria-hidden />}
+                      تعلیق پیشنهاد
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => dismissOffer(l)} disabled={busy === l.listingId}>
+                      گزارش‌ها بی‌پایه است
+                    </Button>
+                    {site ? (
+                      <Button asChild size="sm" variant="ghost">
+                        <a href={site} target="_blank" rel="noopener noreferrer">
+                          بررسی در سایت آژانس
+                          <ExternalLink className="size-3.5" aria-hidden />
+                        </a>
+                      </Button>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <Empty>پیشنهاد گزارش‌شده‌ای نیست.</Empty>
+        )}
+      </section>
+
+      <section aria-labelledby="verification-heading" className="mt-8">
         <h3 id="verification-heading" className="mb-3 flex items-center gap-2 font-semibold">
           <ShieldCheck className="size-4 text-muted-foreground" aria-hidden />
           درخواست‌های تأیید آژانس
