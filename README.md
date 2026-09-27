@@ -27,12 +27,15 @@ A Persian (RTL) flight-price comparison site: one card per real flight, with the
 ## Run with Docker
 
 ```bash
-cp .env.example .env   # then set JWT_SECRET (the command to generate one is in the file)
+cp .env.example .env   # then set JWT_SECRET: 32+ random characters (the command to generate one is in the file)
 docker compose up -d --build
 ```
 
 Open http://localhost:8080. On startup the API applies migrations and, with `SEED_DEMO_DATA=true` (the default in
 Compose), creates demo data; the worker keeps a rolling two-week demo timetable.
+
+If `up` stops with "dependency failed to start: container …-api-1 is unhealthy", run `docker compose logs api`:
+the API names any invalid setting in `.env` (most often a `JWT_SECRET` shorter than 32 characters) and exits.
 
 Demo accounts (password `Demo1234!`):
 
