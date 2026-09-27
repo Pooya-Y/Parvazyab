@@ -22,6 +22,8 @@ export interface LegResults {
   calendarRequest: Omit<CalendarRequest, "start" | "days">;
   facets: QueryState<SearchFacets>;
   results: QueryState<Flight[]>;
+  /** Identifies this search (route, day, filters, sort): a new one starts the list over. */
+  searchKey: string;
 }
 
 export function useLegResults(state: SearchState, leg: Leg): LegResults {
@@ -32,8 +34,9 @@ export function useLegResults(state: SearchState, leg: Leg): LegResults {
   const facets = useApiQuery(`facets:${route.from}:${route.to}:${route.date ?? ""}`, (signal) =>
     api.searchFacets({ originCode: route.from, destinationCode: route.to, date: route.date }, signal),
   );
-  const results = useApiQuery(`search:${JSON.stringify(apiParams)}`, (signal) => api.search(apiParams, signal));
-  return { leg, route, filters, filterCount: activeFilterCount(filters), calendarRequest, facets, results };
+  const searchKey = `search:${JSON.stringify(apiParams)}`;
+  const results = useApiQuery(searchKey, (signal) => api.search(apiParams, signal));
+  return { leg, route, filters, filterCount: activeFilterCount(filters), calendarRequest, facets, results, searchKey };
 }
 
 /** Summary line under the results heading, e.g. "۴ پرواز از ۱۲ پرواز". */

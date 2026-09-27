@@ -3,7 +3,7 @@
  * filter panel/sheet, the sort control and the results body with its
  * loading / error / empty states.
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { RotateCcw, SearchX, SlidersHorizontal, WifiOff } from "lucide-react";
 import { FlightCardSkeleton } from "@/components/flights/FlightCardSkeleton";
@@ -182,14 +182,71 @@ export function ResultsBody({
           </button>
         </p>
       ) : null}
-      <ul
-        className={cn("space-y-3 transition-opacity", results.isFetching && "opacity-60")}
-        aria-busy={results.isFetching}
-      >
-        {flights.map((f, i) => (
+      <PagedFlightList key={data.searchKey} flights={flights} busy={results.isFetching} renderCard={renderCard} />
+    </>
+  );
+}
+
+const PAGE_SIZE = 10;
+
+/**
+ * Ten flights at a time. The whole result set is already loaded (selections,
+ * counts and "lowest price" need all of it); this only keeps the page short.
+ * The next ten appear as the end of the list comes near, or from the button,
+ * for keyboards and browsers without IntersectionObserver. Keyed by the search,
+ * so a new search, filter or sort starts again from the top ten.
+ */
+function PagedFlightList({
+  flights,
+  busy,
+  renderCard,
+}: {
+  flights: Flight[];
+  busy: boolean;
+  renderCard: (flight: Flight, index: number, list: Flight[]) => ReactNode;
+}) {
+  const [visible, setVisible] = useState(PAGE_SIZE);
+  const end = useRef<HTMLDivElement>(null);
+  const shown = flights.slice(0, visible);
+  const remaining = flights.length - shown.length;
+  const showMore = () => setVisible((v) => v + PAGE_SIZE);
+
+  useEffect(() => {
+    const target = end.current;
+    if (!target || remaining <= 0 || typeof IntersectionObserver === "undefined") return;
+    // A new observer reports the current state at once, so if the end is still
+    // in reach after ten more (a tall screen), the next ten follow.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setVisible((v) => v + PAGE_SIZE);
+      },
+      { rootMargin: "0px 0px 400px 0px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [visible, remaining]);
+
+  return (
+    <>
+      <ul className={cn("space-y-3 transition-opacity", busy && "opacity-60")} aria-busy={busy}>
+        {shown.map((f, i) => (
           <li key={f.id}>{renderCard(f, i, flights)}</li>
         ))}
       </ul>
+      {remaining > 0 ? (
+        <div ref={end} className="mt-4 flex flex-col items-center gap-2">
+          <p className="text-xs text-muted-foreground" role="status">
+            {toFaDigits(shown.length)} از {toFaDigits(flights.length)} پرواز
+          </p>
+          <Button variant="outline" onClick={showMore}>
+            نمایش {toFaDigits(Math.min(PAGE_SIZE, remaining))} پرواز دیگر
+          </Button>
+        </div>
+      ) : flights.length > PAGE_SIZE ? (
+        <p className="mt-4 text-center text-xs text-muted-foreground" role="status">
+          همهٔ {toFaDigits(flights.length)} پرواز نمایش داده شد.
+        </p>
+      ) : null}
     </>
   );
 }
