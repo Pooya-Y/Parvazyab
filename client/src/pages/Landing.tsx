@@ -57,9 +57,14 @@ function CheapDestinations() {
   const query = useApiQuery(`explore:${origin}:30:all`, (signal) => api.explore(origin, 30, "all", signal));
   const top = query.data?.destinations.slice(0, 5) ?? [];
 
+  // Stacked on phones; from lg the heading, origin picker and link sit beside the list, so a price is never
+  // a full page width away from its destination.
   return (
-    <section className="container-page py-12 sm:py-16" aria-labelledby="cheap-heading">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section
+      className="container-page grid gap-x-10 gap-y-5 py-12 [grid-template-areas:'head'_'list'_'more'] sm:py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[auto_1fr] lg:[grid-template-areas:'head_list'_'more_list']"
+      aria-labelledby="cheap-heading"
+    >
+      <div className="flex flex-col items-start gap-4 [grid-area:head]">
         <div>
           <h2 id="cheap-heading" className="text-xl font-bold sm:text-2xl">
             ارزان‌ترین مقصدها در ۳۰ روز آینده
@@ -74,7 +79,7 @@ function CheapDestinations() {
           className="max-w-full overflow-x-auto"
         />
       </div>
-      <div className="mt-5">
+      <div className="[grid-area:list]">
         {query.error && !query.data ? (
           <p className="text-sm text-muted-foreground">فهرست مقصدها الان در دسترس نیست.</p>
         ) : query.isLoading ? (
@@ -85,12 +90,14 @@ function CheapDestinations() {
           <p className="text-sm text-muted-foreground">فعلاً پروازی از {airportDistinctName(origin)} ثبت نشده است.</p>
         )}
       </div>
-      <Button asChild variant="outline" className="mt-4">
-        <Link to={`/explore?from=${origin}`}>
-          همه مقصدها از {airportDistinctName(origin)}
-          <ArrowLeft aria-hidden />
-        </Link>
-      </Button>
+      <div className="[grid-area:more]">
+        <Button asChild variant="outline">
+          <Link to={`/explore?from=${origin}`}>
+            همه مقصدها از {airportDistinctName(origin)}
+            <ArrowLeft aria-hidden />
+          </Link>
+        </Button>
+      </div>
     </section>
   );
 }
