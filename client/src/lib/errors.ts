@@ -59,6 +59,9 @@ const MESSAGES: Record<string, string> = {
   PROFILE_INCOMPLETE: "پیش از درخواست تأیید، شمارهٔ مجوز و معرفی دست‌کم ۳۰ نویسه‌ای را در پروفایل بنویسید.",
   ALREADY_VERIFIED: "آژانس شما از قبل تأیید شده است.",
   CANNOT_REPORT_OWN_REVIEW: "نظر خودتان را نمی‌توانید گزارش کنید.",
+  CANNOT_REPORT_OWN_LISTING: "پیشنهاد آژانس خودتان را نمی‌توانید گزارش کنید.",
+  REPORT_LIMIT: "امروز گزارش زیادی ثبت کرده‌اید؛ فردا دوباره امتحان کنید.",
+  REPORT_NOTE_REQUIRED: "برای «دلیل دیگر» چند کلمه توضیح بنویسید.",
   INVALID_REQUEST: "اطلاعات واردشده معتبر نیست.",
 };
 

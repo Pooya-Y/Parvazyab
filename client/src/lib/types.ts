@@ -104,8 +104,28 @@ export interface ModerationQueue {
     createdAt: number;
     lastReportedAt: number;
   }[];
+  /** Offers with open reports from travellers, most reported first. */
+  reportedListings: {
+    listingId: string;
+    airline: string;
+    flightNo: string;
+    originCode: string;
+    destinationCode: string;
+    departAt: number;
+    priceToman: number;
+    bookingUrl: string;
+    agencyName: string;
+    agencySlug: string | null;
+    reports: number;
+    lastReportedAt: number;
+    reasons: { reason: ReportReason; count: number }[];
+    notes: { reason: ReportReason; note: string; observedPrice: number | null; at: number }[];
+  }[];
   counts: { suspendedAccounts: number; suspendedListings: number; hiddenReviews: number };
 }
+
+/** Why a traveller reports an agency's offer. */
+export type ReportReason = "price_mismatch" | "unavailable" | "wrong_details" | "broken_link" | "other";
 
 export interface AdminListing {
   id: string;

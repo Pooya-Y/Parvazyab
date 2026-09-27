@@ -23,6 +23,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "admin.review_hidden": "پنهان کردن نظر",
   "admin.review_restored": "نمایش دوبارهٔ نظر",
   "admin.reports_dismissed": "رد گزارش‌های یک نظر",
+  "admin.listing_reports_dismissed": "رد گزارش‌های یک پیشنهاد",
   "agency.verification_requested": "درخواست تأیید آژانس",
 };
 

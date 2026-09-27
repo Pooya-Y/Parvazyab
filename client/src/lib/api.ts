@@ -25,6 +25,7 @@ import type {
   PriceAlertInput,
   SavedFlight,
   SearchFacets,
+  ReportReason,
   SearchPage,
   SearchParams,
   User,
@@ -114,6 +115,9 @@ export const api = {
       query: { date },
       signal,
     }),
+  /** A traveller's report on an agency's offer (updates their open report on it, if any). */
+  reportListing: (listingId: string, report: { reason: ReportReason; observedPrice: number | null; note: string }) =>
+    request<{ ok: true }>(`/listings/${encodeURIComponent(listingId)}/reports`, { method: "POST", body: report }),
   searchFacets: (q: Pick<SearchParams, "originCode" | "destinationCode" | "date">, signal?: AbortSignal) =>
     request<SearchFacets>("/search/facets", { query: { ...q }, signal }),
   /** Cheapest price per day; `params` carries the same filters as search (minus date/sort/price). */
@@ -303,6 +307,8 @@ export const api = {
       request<{ ok: true }>(`/admin/reviews/${encodeURIComponent(id)}/status`, { method: "PUT", body: { status } }),
     dismissReports: (id: string) =>
       request<{ ok: true }>(`/admin/reviews/${encodeURIComponent(id)}/dismiss-reports`, { method: "POST" }),
+    dismissListingReports: (listingId: string) =>
+      request<{ ok: true }>(`/admin/listings/${encodeURIComponent(listingId)}/dismiss-reports`, { method: "POST" }),
     audit: (options: { action?: string; before?: number; limit?: number } = {}, signal?: AbortSignal) =>
       request<AuditEntry[]>("/admin/audit", { query: { ...options }, signal }),
     stats: (signal?: AbortSignal) => request<AdminStats>("/admin/stats", { signal }),
