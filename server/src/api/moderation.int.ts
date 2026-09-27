@@ -63,10 +63,10 @@ describe("moderation", { skip }, () => {
 
   const search = async (origin = "THR", dest = "MHD") =>
     (
-      await new TestClient(server.url).get<{ flightNo: string }[]>(
+      await new TestClient(server.url).get<{ flights: { flightNo: string }[] }>(
         `/api/search?originCode=${origin}&destinationCode=${dest}`,
       )
-    ).body.map((f) => f.flightNo);
+    ).body.flights.map((f) => f.flightNo);
 
   test("a suspended listing disappears everywhere travellers look, and the agency is told why", async () => {
     const { account, client } = await agency();

@@ -140,10 +140,12 @@ function PriceFilter({
   const id = useId();
   const [draft, setDraft] = useState(value ?? facets.maxPrice);
 
-  // Follow external resets (e.g. "clear filters").
-  const [synced, setSynced] = useState(value);
-  if (synced !== value) {
-    setSynced(value);
+  // Follow external changes: a reset ("clear filters"), and a new result set whose
+  // highest price differs (another day, the other leg of a round trip). Otherwise the
+  // old maximum would stay in the draft and be committed below as a filter nobody set.
+  const [synced, setSynced] = useState({ value, max: facets.maxPrice });
+  if (synced.value !== value || synced.max !== facets.maxPrice) {
+    setSynced({ value, max: facets.maxPrice });
     setDraft(value ?? facets.maxPrice);
   }
 

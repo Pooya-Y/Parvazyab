@@ -13,6 +13,7 @@ export const LIGHT_TOKENS: Record<string, string> = {
   muted: "oklch(0.955 0.006 25)",
   "muted-foreground": "oklch(0.48 0.02 25)",
   accent: "oklch(0.945 0.015 25)",
+  destructive: "oklch(0.52 0.21 20)",
   success: "oklch(0.5 0.13 155)",
   "chart-1": "#2a78d6",
   border: "oklch(0.905 0.01 25)",
@@ -28,6 +29,7 @@ export const DARK_TOKENS: Record<string, string> = {
   muted: "oklch(0.27 0.018 25)",
   "muted-foreground": "oklch(0.72 0.015 25)",
   accent: "oklch(0.3 0.025 25)",
+  destructive: "oklch(0.68 0.19 20)",
   success: "oklch(0.76 0.14 155)",
   "chart-1": "#3987e5",
   border: "oklch(1 0 0 / 13%)",
@@ -133,6 +135,8 @@ h3{margin:0 0 .25rem;font-size:1rem;font-weight:700;line-height:1.6}
 .calendar .none .p{font-weight:400;color:var(--muted-foreground)}
 .calendar .best{border-color:var(--success);box-shadow:inset 0 0 0 1px var(--success)}
 .calendar .best .p{color:var(--success)}
+.calendar th.fri,.calendar .fri .d{color:var(--destructive)}
+.calendar .today{outline:1.5px solid var(--primary);outline-offset:1px}
 @media (max-width:26rem){.calendar{border-spacing:.125rem;width:calc(100% + .25rem);margin-inline:-.125rem}.calendar td{height:3.25rem}.calendar .day{padding:.25rem}.calendar .p{font-size:.75rem}}
 .flights{margin:0;padding:0;list-style:none;border-top:1px solid var(--border)}
 .flights li{border-bottom:1px solid var(--border)}

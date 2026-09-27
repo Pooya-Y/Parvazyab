@@ -25,8 +25,9 @@ export function OneWayResults({
   const { isAuthenticated } = useAuth();
   const saved = useSavedFlights();
   const data = useLegResults(state, "out");
-  const flights = data.results.data ?? [];
-  const lowest = flights.length ? Math.min(...flights.map((f) => f.bestPriceToman)) : null;
+  // Across every page, not only those loaded.
+  const lowest = data.results.minPrice ?? null;
+  const hasFlights = (data.results.total ?? 0) > 0;
 
   const noFlights = (
     <StateMessage
@@ -98,10 +99,10 @@ export function OneWayResults({
           data={data}
           onChange={onChange}
           noFlights={noFlights}
-          renderCard={(f, i, list) => (
+          renderCard={(f, i, total) => (
             <FlightCard
               flight={f}
-              recommended={state.sort === "best" && i === 0 && list.length > 1}
+              recommended={state.sort === "best" && i === 0 && total > 1}
               date={state.date}
               saved={saved.savedKeys.has(f.id)}
               savePending={saved.pending.has(f.id)}
@@ -110,7 +111,7 @@ export function OneWayResults({
           )}
         />
 
-        {!isAuthenticated && flights.length > 0 ? <SignInHint returnTo={`/search?${toSearchParams(state)}`} /> : null}
+        {!isAuthenticated && hasFlights ? <SignInHint returnTo={`/search?${toSearchParams(state)}`} /> : null}
       </section>
     </div>
   );

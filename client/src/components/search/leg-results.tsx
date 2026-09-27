@@ -3,9 +3,9 @@
  * filter panel/sheet, the sort control and the results body with its
  * loading / error / empty states.
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { RotateCcw, SearchX, SlidersHorizontal, WifiOff } from "lucide-react";
+import { Loader2, RotateCcw, SearchX, SlidersHorizontal, WifiOff } from "lucide-react";
 import { FlightCardSkeleton } from "@/components/flights/FlightCardSkeleton";
 import { SearchFilters } from "@/components/flights/SearchFilters";
 import { StateMessage } from "@/components/StateMessage";
@@ -24,6 +24,7 @@ import { errorMessage } from "@/lib/errors";
 import { toFaDigits } from "@/lib/persian";
 import { CLEARED_FILTERS, SORT_OPTIONS, legPatch, type SearchState } from "@/lib/search-state";
 import type { Flight, SortMode } from "@/lib/types";
+import { SEARCH_PAGE_SIZE, type PagedSearch } from "@/lib/use-paged-search";
 import type { LegResults } from "./use-leg-results";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,11 @@ type FilterChange = (patch: Partial<SearchState>) => void;
 
 export function FiltersAside({ data, onChange }: { data: LegResults; onChange: FilterChange }) {
   return (
-    <aside className="hidden rounded-lg border bg-card p-4 lg:sticky lg:top-20 lg:block" aria-label="فیلتر نتایج">
+    // Sticky, so it scrolls on its own when taller than the window (below the 5rem header offset).
+    <aside
+      className="hidden rounded-lg border bg-card p-4 [scrollbar-width:thin] lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-contain"
+      aria-label="فیلتر نتایج"
+    >
       <SearchFilters
         facets={data.facets.data}
         filters={data.filters}
@@ -43,7 +48,7 @@ export function FiltersAside({ data, onChange }: { data: LegResults; onChange: F
 
 export function FiltersSheetButton({ data, onChange }: { data: LegResults; onChange: FilterChange }) {
   const [open, setOpen] = useState(false);
-  const count = data.results.data?.length ?? 0;
+  const count = data.results.total ?? 0;
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -72,7 +77,7 @@ export function FiltersSheetButton({ data, onChange }: { data: LegResults; onCha
         </div>
         <SheetFooter className="border-t">
           <Button onClick={() => setOpen(false)} className="h-11 w-full">
-            {data.results.isFetching ? "در حال به‌روزرسانی…" : `نمایش ${toFaDigits(count)} پرواز`}
+            {data.results.first.isFetching ? "در حال به‌روزرسانی…" : `نمایش ${toFaDigits(count)} پرواز`}
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -103,32 +108,30 @@ export function ResultsBody({
   onChange,
   noFlights,
   renderCard,
-  arrange = (list) => list,
 }: {
   data: LegResults;
   onChange: FilterChange;
   /** Empty state when the route/day has no flights at all. */
   noFlights: ReactNode;
-  renderCard: (flight: Flight, index: number, list: Flight[]) => ReactNode;
-  /** Reorder the list before rendering (e.g. unavailable flights last). */
-  arrange?: (flights: Flight[]) => Flight[];
+  /** `total`: flights matching the search across every page. */
+  renderCard: (flight: Flight, index: number, total: number) => ReactNode;
 }) {
   const { results, facets, filterCount } = data;
-  const flights = arrange(results.data ?? []);
-  const total = facets.data?.total ?? 0;
+  const { first } = results;
+  const routeTotal = facets.data?.total ?? 0;
 
-  if (results.error && !results.data) {
+  if (first.error && !first.data) {
     return (
       <StateMessage
         tone="error"
         icon={WifiOff}
         title="نتایج دریافت نشد"
-        description={errorMessage(results.error, "در دریافت نتایج مشکلی پیش آمد.")}
+        description={errorMessage(first.error, "در دریافت نتایج مشکلی پیش آمد.")}
         action={
           <Button
             variant="outline"
             onClick={() => {
-              results.refetch();
+              first.refetch();
               facets.refetch();
             }}
           >
@@ -139,7 +142,7 @@ export function ResultsBody({
       />
     );
   }
-  if (results.isLoading) {
+  if (first.isLoading) {
     return (
       <div className="space-y-3" role="status" aria-label="در حال بارگذاری نتایج">
         {[0, 1, 2, 3].map((i) => (
@@ -148,12 +151,12 @@ export function ResultsBody({
       </div>
     );
   }
-  if (flights.length === 0) {
-    return filterCount > 0 && total > 0 ? (
+  if (results.flights.length === 0) {
+    return filterCount > 0 && routeTotal > 0 ? (
       <StateMessage
         icon={SearchX}
         title="پروازی با این فیلترها پیدا نشد"
-        description={`در این مسیر ${toFaDigits(total)} پرواز هست، اما هیچ‌کدام با فیلترهای انتخابی جور نیست.`}
+        description={`در این مسیر ${toFaDigits(routeTotal)} پرواز هست، اما هیچ‌کدام با فیلترهای انتخابی جور نیست.`}
         action={
           <Button variant="outline" onClick={() => onChange(legPatch(data.leg, CLEARED_FILTERS))}>
             <RotateCcw />
@@ -167,25 +170,84 @@ export function ResultsBody({
   }
   return (
     <>
-      {results.error ? (
+      {first.error ? (
         <p
           className="mb-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
           role="alert"
         >
-          {errorMessage(results.error, "به‌روزرسانی نتایج ناموفق بود.")}{" "}
-          <button type="button" className="font-semibold underline" onClick={results.refetch}>
+          {errorMessage(first.error, "به‌روزرسانی نتایج ناموفق بود.")}{" "}
+          <button type="button" className="font-semibold underline" onClick={first.refetch}>
             تلاش دوباره
           </button>
         </p>
       ) : null}
-      <ul
-        className={cn("space-y-3 transition-opacity", results.isFetching && "opacity-60")}
-        aria-busy={results.isFetching}
-      >
+      <PagedFlightList results={results} renderCard={renderCard} />
+    </>
+  );
+}
+
+/**
+ * The flights fetched so far, and the next ten from the server as the end of the
+ * list comes near. The button does the same for keyboards and browsers without
+ * IntersectionObserver, and retries when a page fails.
+ */
+function PagedFlightList({
+  results,
+  renderCard,
+}: {
+  results: PagedSearch;
+  renderCard: (flight: Flight, index: number, total: number) => ReactNode;
+}) {
+  const { flights, hasMore, loadingMore, moreError } = results;
+  const total = results.total ?? flights.length;
+  const end = useRef<HTMLDivElement>(null);
+  const reachedEnd = useEffectEvent(() => results.loadMore());
+
+  useEffect(() => {
+    const target = end.current;
+    if (!target || !hasMore || loadingMore || moreError || typeof IntersectionObserver === "undefined") return;
+    // A new observer reports the current state at once: if the end is still in
+    // reach after a page arrives (a tall screen), the next page follows.
+    const observer = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && reachedEnd(), {
+      rootMargin: "0px 0px 400px 0px",
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, moreError, flights.length]);
+
+  const busy = results.first.isFetching;
+  return (
+    <>
+      <ul className={cn("space-y-3 transition-opacity", busy && "opacity-60")} aria-busy={busy}>
         {flights.map((f, i) => (
-          <li key={f.id}>{renderCard(f, i, flights)}</li>
+          <li key={f.id}>{renderCard(f, i, total)}</li>
         ))}
       </ul>
+      {hasMore ? (
+        <div ref={end} className="mt-4 flex flex-col items-center gap-2">
+          <p className="text-xs text-muted-foreground" role="status">
+            {moreError
+              ? errorMessage(moreError, "دریافت پروازهای بیشتر ناموفق بود.")
+              : `${toFaDigits(flights.length)} از ${toFaDigits(total)} پرواز`}
+          </p>
+          <Button variant="outline" onClick={results.loadMore} disabled={loadingMore}>
+            {loadingMore ? (
+              <Loader2 className="animate-spin" aria-hidden />
+            ) : moreError ? (
+              <RotateCcw aria-hidden />
+            ) : null}
+            {loadingMore
+              ? "در حال دریافت…"
+              : moreError
+                ? "تلاش دوباره"
+                : `نمایش ${toFaDigits(Math.min(SEARCH_PAGE_SIZE, total - flights.length))} پرواز دیگر`}
+          </Button>
+        </div>
+      ) : total > SEARCH_PAGE_SIZE ? (
+        <p className="mt-4 text-center text-xs text-muted-foreground" role="status">
+          همهٔ {toFaDigits(total)} پرواز نمایش داده شد.
+        </p>
+      ) : null}
     </>
   );
 }

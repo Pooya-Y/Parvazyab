@@ -45,10 +45,10 @@ describe("saved flights, agency listings and admin", { skip }, () => {
     await createListing(agency.id, { flightNo: "W5-500", departAt: hoursFromNow(20) });
     const client = await as(user);
     const [flight] = (
-      await client.get<{ id: string; offers: { agencyName: string }[] }[]>(
+      await client.get<{ flights: { id: string; offers: { agencyName: string }[] }[] }>(
         "/api/search?originCode=THR&destinationCode=MHD",
       )
-    ).body;
+    ).body.flights;
     const snapshot = { ...flight, agencyName: flight.offers[0].agencyName };
     const first = await client.post("/api/saved-flights", { snapshot });
     assert.equal(first.status, 201);
@@ -84,11 +84,11 @@ describe("saved flights, agency listings and admin", { skip }, () => {
       isActive: true,
     });
     assert.equal(created.status, 201);
-    const search = await owner.get<{ airline: string; flightNo: string }[]>(
+    const search = await owner.get<{ flights: { airline: string; flightNo: string }[] }>(
       "/api/search?originCode=IFN&destinationCode=SYZ",
     );
     assert.deepEqual(
-      search.body.map((f) => [f.airline, f.flightNo]),
+      search.body.flights.map((f) => [f.airline, f.flightNo]),
       [["زاگرس", "IZ-708"]],
     );
 
@@ -106,8 +106,8 @@ describe("saved flights, agency listings and admin", { skip }, () => {
       (await owner.patch(`/api/dashboard/listings/${created.body.id}/status`, { isActive: false })).status,
       200,
     );
-    const hidden = await owner.get<unknown[]>("/api/search?originCode=IFN&destinationCode=SYZ");
-    assert.equal(hidden.body.length, 0);
+    const hidden = await owner.get<{ total: number }>("/api/search?originCode=IFN&destinationCode=SYZ");
+    assert.equal(hidden.body.total, 0);
 
     const stats = await owner.get<{ total: number; active: number }>("/api/dashboard/stats");
     assert.equal(stats.body.total, 2);
@@ -145,11 +145,11 @@ describe("saved flights, agency listings and admin", { skip }, () => {
     const mine = await owner.get<{ flightNo: string; fareType: string }[]>("/api/dashboard/listings");
     assert.equal(mine.body.find((l) => l.flightNo === "IR-551")?.fareType, "scheduled");
 
-    const onlyCharter = await owner.get<{ flightNo: string; offers: { fareType: string }[] }[]>(
+    const onlyCharter = await owner.get<{ flights: { flightNo: string; offers: { fareType: string }[] }[] }>(
       "/api/search?originCode=THR&destinationCode=KIH&fareType=charter",
     );
     assert.deepEqual(
-      onlyCharter.body.map((f) => [f.flightNo, f.offers[0].fareType]),
+      onlyCharter.body.flights.map((f) => [f.flightNo, f.offers[0].fareType]),
       [["W5-553", "charter"]],
     );
     const facets = await owner.get<{ fareTypes: string[] }>("/api/search/facets?originCode=THR&destinationCode=KIH");

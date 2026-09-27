@@ -28,6 +28,8 @@ const WEEKDAYS = [
   ["پ", "پنجشنبه"],
   ["ج", "جمعه"],
 ] as const;
+/** Column of Friday, the weekly holiday. */
+const FRIDAY = 6;
 
 type MonthView = Pick<JalaliDate, "jy" | "jm">;
 
@@ -211,8 +213,12 @@ export function JalaliDatePicker({
         </div>
 
         <div className="grid grid-cols-7 text-center" aria-hidden>
-          {WEEKDAYS.map(([short, full]) => (
-            <abbr key={full} title={full} className="py-1 text-xs text-muted-foreground no-underline">
+          {WEEKDAYS.map(([short, full], i) => (
+            <abbr
+              key={full}
+              title={full}
+              className={cn("py-1 text-xs no-underline", i === FRIDAY ? "text-destructive" : "text-muted-foreground")}
+            >
               {short}
             </abbr>
           ))}
@@ -228,6 +234,7 @@ export function JalaliDatePicker({
             const price = prices?.get(key);
             const isCheapest = !disabled && price !== undefined && price !== null && price === cheapest;
             const isRangeStart = key === rangeStart;
+            const isFriday = (firstColumn + i) % 7 === FRIDAY;
             const inRange = Boolean(rangeStart && value && key > rangeStart && key < value);
             const priceLabel =
               price === undefined || disabled
@@ -256,12 +263,20 @@ export function JalaliDatePicker({
                     : disabled
                       ? "text-muted-foreground/40"
                       : "hover:bg-accent",
-                  key === today && !selected && "font-semibold text-primary ring-1 ring-primary/40 ring-inset",
+                  // Today: an ordinary digit in a red outline (red digits are Fridays).
+                  key === today && !selected && "ring-1 ring-primary ring-inset",
                   inRange && !selected && "bg-primary/[0.07]",
                   isRangeStart && !selected && "bg-primary/15 font-semibold text-primary",
                 )}
               >
-                <span className={cn(showPrices && "leading-5")}>{toFaDigits(i + 1)}</span>
+                <span
+                  className={cn(
+                    showPrices && "leading-5",
+                    isFriday && !selected && (disabled ? "text-destructive/40" : "text-destructive"),
+                  )}
+                >
+                  {toFaDigits(i + 1)}
+                </span>
                 {showPrices && !disabled ? (
                   price === undefined ? (
                     <span className="h-2 w-6 animate-pulse rounded-sm bg-muted" aria-hidden />

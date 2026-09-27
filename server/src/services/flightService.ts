@@ -4,6 +4,7 @@ import { cached } from "./redis";
 import {
   applyFilters,
   groupOffersByFlight,
+  pairableFirst,
   rankFlights,
   resultBounds,
   sortFlights,
@@ -72,7 +73,22 @@ export function loadRouteFlights(originCode: string, destinationCode: string, da
   });
 }
 
-export async function searchFlights(q: SearchQuery): Promise<FlightCard[]> {
+/** One page of search results, plus what the whole result set needs to say about itself. */
+export interface SearchPage {
+  flights: FlightCard[];
+  /** Flights matching the search and its filters, across every page. */
+  total: number;
+  offset: number;
+  limit: number;
+  /** Lowest price among all of them; null when nothing matches. */
+  minPrice: number | null;
+}
+
+/**
+ * Ranks and sorts the whole filtered route (badges and "why" reasons compare a
+ * flight with all of them), then serves the requested slice.
+ */
+export async function searchFlights(q: SearchQuery): Promise<SearchPage> {
   const flights = await loadRouteFlights(q.originCode, q.destinationCode, q.date);
   const filters: SearchFilters = {
     airlines: q.airlines,
@@ -91,7 +107,17 @@ export async function searchFlights(q: SearchQuery): Promise<FlightCard[]> {
         : undefined,
   };
   const ranked = rankFlights(applyFilters(flights, filters), q.mode ?? "relevance");
-  return q.sort ? sortFlights(ranked, q.sort) : ranked;
+  const ordered = pairableFirst(q.sort ? sortFlights(ranked, q.sort) : ranked, {
+    departFrom: q.departFrom,
+    arriveBy: q.arriveBy,
+  });
+  return {
+    flights: ordered.slice(q.offset, q.offset + q.limit),
+    total: ordered.length,
+    offset: q.offset,
+    limit: q.limit,
+    minPrice: ordered.length ? Math.min(...ordered.map((f) => f.bestPriceToman)) : null,
+  };
 }
 
 export interface SearchFacets {
@@ -137,8 +163,8 @@ export async function searchFacets(originCode: string, destinationCode: string, 
   };
 }
 
-export async function findFlight(originCode: string, destinationCode: string, flightId: string) {
-  const flights = await loadRouteFlights(originCode, destinationCode);
-  // Rank against the whole route so badges ("cheapest", ...) keep their meaning.
+export async function findFlight(originCode: string, destinationCode: string, flightId: string, date?: string) {
+  const flights = await loadRouteFlights(originCode, destinationCode, date);
+  // Rank against the whole route (or day) so badges ("cheapest", ...) keep their meaning.
   return rankFlights(flights).find((f) => f.id === flightId) ?? null;
 }

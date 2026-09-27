@@ -9,8 +9,9 @@ import {
   type SearchFiltersState,
   type SearchState,
 } from "@/lib/search-state";
-import type { Flight, SearchFacets } from "@/lib/types";
+import type { SearchFacets, SearchParams } from "@/lib/types";
 import { useApiQuery, type QueryState } from "@/lib/use-api-query";
+import { usePagedSearch, type PagedSearch } from "@/lib/use-paged-search";
 import type { CalendarRequest } from "@/hooks/use-price-calendar";
 
 export interface LegResults {
@@ -21,10 +22,14 @@ export interface LegResults {
   /** Route + filters for the date strip (the price cap is what it displays, so it's excluded). */
   calendarRequest: Omit<CalendarRequest, "start" | "days">;
   facets: QueryState<SearchFacets>;
-  results: QueryState<Flight[]>;
+  /** The results, fetched from the server ten at a time. */
+  results: PagedSearch;
 }
 
-export function useLegResults(state: SearchState, leg: Leg): LegResults {
+/** Round trips: the other leg's choice, as the times this leg's flights must keep to. */
+export type Pairing = Pick<SearchParams, "departFrom" | "arriveBy">;
+
+export function useLegResults(state: SearchState, leg: Leg, pairing?: Pairing): LegResults {
   const route = legRoute(state, leg);
   const filters = legFilters(state, leg);
   const apiParams = toApiParams(state, leg);
@@ -32,15 +37,15 @@ export function useLegResults(state: SearchState, leg: Leg): LegResults {
   const facets = useApiQuery(`facets:${route.from}:${route.to}:${route.date ?? ""}`, (signal) =>
     api.searchFacets({ originCode: route.from, destinationCode: route.to, date: route.date }, signal),
   );
-  const results = useApiQuery(`search:${JSON.stringify(apiParams)}`, (signal) => api.search(apiParams, signal));
+  const results = usePagedSearch({ ...apiParams, ...pairing });
   return { leg, route, filters, filterCount: activeFilterCount(filters), calendarRequest, facets, results };
 }
 
 /** Summary line under the results heading, e.g. "۴ پرواز از ۱۲ پرواز". */
 export function resultsSummary({ results, facets, filterCount }: LegResults): string {
-  if (results.isLoading) return "در حال جستجوی پروازها…";
-  if (results.error && !results.data) return "دریافت نتایج ناموفق بود";
-  const count = results.data?.length ?? 0;
+  if (results.first.isLoading) return "در حال جستجوی پروازها…";
+  if (results.first.error && !results.first.data) return "دریافت نتایج ناموفق بود";
+  const count = results.total ?? 0;
   const total = facets.data?.total;
   return filterCount > 0 && total !== undefined
     ? `${toFaDigits(count)} پرواز از ${toFaDigits(total)} پرواز`

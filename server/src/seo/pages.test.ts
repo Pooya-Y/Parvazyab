@@ -79,6 +79,11 @@ describe("route pages", () => {
     assert.match(page, /آژانس‌ها برای بعد از .+ هنوز پروازی ثبت نکرده‌اند/);
     const calendar = /<table class="calendar">[\s\S]*?<\/table>/.exec(page)![0];
     assert.equal(calendar.match(/<tr>/g)?.length, 2, "weekday header + one week");
+    // Today (Sunday 5 Mehr) is outlined; Friday (10 Mehr) and its column header are the holiday.
+    assert.equal(calendar.match(/class="day[^"]*\btoday\b/g)?.length, 1);
+    assert.match(calendar, /امروز، یکشنبه ۵ مهر/);
+    assert.match(calendar, /class="day none fri"[\s\S]*?جمعه ۱۰ مهر/);
+    assert.equal(calendar.match(/<th scope="col"\s+class="fri">/g)?.length, 1);
   });
 
   test("routes with nothing to show, and unknown pages, stay out of the index", () => {

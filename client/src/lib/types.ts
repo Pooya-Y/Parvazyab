@@ -212,6 +212,8 @@ export interface ExploreDestination {
   code: string;
   city: string;
   isInternational: boolean;
+  /** Where the cheapest fare leaves from (one of the requested origins). */
+  originCode: string;
   minPrice: number;
   cheapestDate: string;
   flights: number;
@@ -220,6 +222,7 @@ export interface ExploreDestination {
 
 export interface ExploreResult {
   originCode: string;
+  originCodes: string[];
   days: number;
   scope: ExploreScope;
   destinations: ExploreDestination[];
@@ -241,6 +244,23 @@ export interface SearchParams {
   departToHour?: number;
   arriveFromHour?: number;
   arriveToHour?: number;
+  /** Page of results: skip this many… */
+  offset?: number;
+  /** …and return at most this many (the server allows up to 100). */
+  limit?: number;
+  /** Round trips: flights leaving before this instant can't follow the chosen outbound (they come last). */
+  departFrom?: number;
+  /** Round trips: flights landing after this instant can't precede the chosen return (they come last). */
+  arriveBy?: number;
+}
+
+/** One page of search results; `total` and `minPrice` describe every page. */
+export interface SearchPage {
+  flights: Flight[];
+  total: number;
+  offset: number;
+  limit: number;
+  minPrice: number | null;
 }
 
 export interface PopularRoute {

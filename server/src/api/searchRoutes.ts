@@ -8,7 +8,14 @@ import { notFound } from "../http/errors";
 import { priceCalendar } from "../services/priceCalendar";
 import { routePriceHistory } from "../services/priceHistory";
 import { exploreFrom } from "../services/explore";
-import { airportCode, calendarQuerySchema, exploreQuerySchema, routeQuerySchema, searchQuerySchema } from "./schemas";
+import {
+  airportCode,
+  calendarQuerySchema,
+  exploreQuerySchema,
+  flightQuerySchema,
+  routeQuerySchema,
+  searchQuerySchema,
+} from "./schemas";
 
 const router = Router();
 
@@ -63,7 +70,8 @@ router.get("/routes/:routeKey/price-history", async (req, res) => {
 
 router.get("/flights/:routeKey/:flightId", async (req, res) => {
   const [originCode, destinationCode] = routeKeySchema.parse(req.params.routeKey);
-  const flight = await findFlight(originCode, destinationCode, req.params.flightId);
+  const { date } = flightQuerySchema.parse(req.query);
+  const flight = await findFlight(originCode, destinationCode, req.params.flightId, date);
   if (!flight) throw notFound();
   res.json({ flight });
 });

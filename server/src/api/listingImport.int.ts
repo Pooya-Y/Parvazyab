@@ -113,11 +113,11 @@ describe("CSV import and export", { skip }, () => {
     assert.equal(saved[1].fareType, "charter");
     assert.equal(saved[1].isActive, false);
 
-    const search = await new TestClient(server.url).get<{ flightNo: string }[]>(
+    const search = await new TestClient(server.url).get<{ flights: { flightNo: string }[] }>(
       `/api/search?originCode=THR&destinationCode=MHD&date=${day(5)}`,
     );
     assert.deepEqual(
-      search.body.map((f) => f.flightNo),
+      search.body.flights.map((f) => f.flightNo),
       ["W5-1071"],
       "imported listings are searchable right away",
     );

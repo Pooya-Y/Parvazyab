@@ -88,7 +88,7 @@ export default function Explore() {
       />
     );
   } else {
-    body = <DestinationList originCode={origin} destinations={destinations} fetching={query.isFetching} />;
+    body = <DestinationList destinations={destinations} fetching={query.isFetching} />;
   }
 
   return (

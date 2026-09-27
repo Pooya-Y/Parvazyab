@@ -15,7 +15,15 @@ import { TEHRAN_OFFSET_MS } from "../domain/time";
 
 interface Explore {
   scope: string;
-  destinations: { code: string; minPrice: number; cheapestDate: string; flights: number; isInternational: boolean }[];
+  originCodes: string[];
+  destinations: {
+    code: string;
+    originCode: string;
+    minPrice: number;
+    cheapestDate: string;
+    flights: number;
+    isInternational: boolean;
+  }[];
 }
 
 const tehranDate = (d: Date) => new Date(d.getTime() + TEHRAN_OFFSET_MS).toISOString().slice(0, 10);
@@ -68,6 +76,29 @@ describe("explore API", { skip }, () => {
       departAt: hoursFromNow(70),
       priceToman: 8_000_000,
     });
+    // Tehran's other airport: a cheaper Dubai fare, Istanbul, and a flight to Mehrabad (not a destination).
+    const ika = { originCode: "IKA", originCity: "تهران (امام خمینی)" };
+    await createListing(b.id, {
+      ...ika,
+      destinationCode: "DXB",
+      flightNo: "EK-1",
+      departAt: hoursFromNow(80),
+      priceToman: 7_300_000,
+    });
+    await createListing(b.id, {
+      ...ika,
+      destinationCode: "IST",
+      flightNo: "TK-1",
+      departAt: hoursFromNow(90),
+      priceToman: 12_000_000,
+    });
+    await createListing(b.id, {
+      ...ika,
+      destinationCode: "THR",
+      flightNo: "IR-9",
+      departAt: hoursFromNow(20),
+      priceToman: 500_000,
+    });
     server = await startServer();
     client = new TestClient(server.url);
   });
@@ -109,8 +140,37 @@ describe("explore API", { skip }, () => {
     );
   });
 
+  test("a city's airports rank together, each fare naming the airport it leaves from", async () => {
+    const res = await client.get<Explore>("/api/explore?originCode=THR,IKA&days=14");
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.originCodes, ["THR", "IKA"]);
+    assert.deepEqual(
+      res.body.destinations.map((d) => [d.code, d.originCode, d.minPrice]),
+      [
+        ["KIH", "THR", 1_900_000],
+        ["MHD", "THR", 2_300_000],
+        ["DXB", "IKA", 7_300_000],
+        ["IST", "IKA", 12_000_000],
+      ],
+    );
+    // Dubai is flown from both airports: both flights count, the cheaper airport wins.
+    assert.equal(res.body.destinations.find((d) => d.code === "DXB")?.flights, 2);
+    // One airport alone is unchanged, and says where it flies from.
+    const thr = await client.get<Explore>("/api/explore?originCode=THR&days=14");
+    assert.deepEqual(
+      thr.body.destinations.map((d) => [d.code, d.originCode]),
+      [
+        ["KIH", "THR"],
+        ["MHD", "THR"],
+        ["DXB", "THR"],
+      ],
+    );
+  });
+
   test("validates input", async () => {
     assert.equal((await client.get("/api/explore?originCode=XXX")).status, 400);
+    assert.equal((await client.get("/api/explore?originCode=THR,XXX")).status, 400);
+    assert.equal((await client.get("/api/explore?originCode=")).status, 400);
     assert.equal((await client.get("/api/explore?originCode=THR&days=365")).status, 400);
   });
 });

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { useApiQuery } from "@/lib/use-api-query";
-import { airportDistinctName, airportShortCity } from "@/domain/airports";
+import { airportShortCity } from "@/domain/airports";
 import { searchUrl } from "@/lib/search-state";
 import { toFaDigits } from "@/lib/persian";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -49,17 +49,29 @@ function PopularRoutes() {
   );
 }
 
-const TEASER_ORIGINS = ["THR", "IKA", "MHD", "SYZ"];
+/** Cities rather than airports: Tehran's two airports (domestic and international) count as one origin. */
+const TEASER_ORIGINS = [
+  { codes: ["THR", "IKA"], name: "تهران" },
+  { codes: ["MHD"], name: "مشهد" },
+  { codes: ["SYZ"], name: "شیراز" },
+];
 
-/** Top five cheapest destinations from a few big airports, linking to the full explore page. */
+/** Top five cheapest destinations from a few big cities, linking to the full explore page. */
 function CheapDestinations() {
-  const [origin, setOrigin] = useState("THR");
-  const query = useApiQuery(`explore:${origin}:30:all`, (signal) => api.explore(origin, 30, "all", signal));
+  const [originIndex, setOriginIndex] = useState(0);
+  const origin = TEASER_ORIGINS[originIndex];
+  const codes = origin.codes.join(",");
+  const query = useApiQuery(`explore:${codes}:30:all`, (signal) => api.explore(codes, 30, "all", signal));
   const top = query.data?.destinations.slice(0, 5) ?? [];
 
+  // Stacked on phones; from lg the heading and origin picker sit beside the list, so a price is never
+  // a full page width away from its destination.
   return (
-    <section className="container-page py-12 sm:py-16" aria-labelledby="cheap-heading">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section
+      className="container-page grid gap-x-10 gap-y-5 py-12 [grid-template-areas:'head'_'list'] sm:py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:[grid-template-areas:'head_list']"
+      aria-labelledby="cheap-heading"
+    >
+      <div className="flex flex-col items-start gap-4 [grid-area:head]">
         <div>
           <h2 id="cheap-heading" className="text-xl font-bold sm:text-2xl">
             ارزان‌ترین مقصدها در ۳۰ روز آینده
@@ -68,29 +80,37 @@ function CheapDestinations() {
         </div>
         <Segmented
           legend="مبدا"
-          options={TEASER_ORIGINS.map((code) => ({ value: code, label: `از ${airportDistinctName(code)}` }))}
-          value={origin}
-          onChange={setOrigin}
+          options={TEASER_ORIGINS.map((o, i) => ({ value: i, label: `از ${o.name}` }))}
+          value={originIndex}
+          onChange={setOriginIndex}
           className="max-w-full overflow-x-auto"
-        />
+        >
+          <span className="mx-1 my-1.5 w-px shrink-0 bg-border" aria-hidden />
+          <Link
+            to={`/explore?from=${origin.codes[0]}`}
+            className="flex h-8 items-center gap-1 rounded-[5px] px-3 text-sm font-medium whitespace-nowrap text-primary transition-colors hover:bg-card focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            همه مقصدها
+            <ArrowLeft className="size-3.5" aria-hidden />
+          </Link>
+        </Segmented>
       </div>
-      <div className="mt-5">
+      <div className="[grid-area:list]">
         {query.error && !query.data ? (
           <p className="text-sm text-muted-foreground">فهرست مقصدها الان در دسترس نیست.</p>
         ) : query.isLoading ? (
           <DestinationListSkeleton rows={5} />
         ) : top.length ? (
-          <DestinationList originCode={origin} destinations={top} compact fetching={query.isFetching} />
+          <DestinationList
+            destinations={top}
+            compact
+            showOrigin={origin.codes.length > 1}
+            fetching={query.isFetching}
+          />
         ) : (
-          <p className="text-sm text-muted-foreground">فعلاً پروازی از {airportDistinctName(origin)} ثبت نشده است.</p>
+          <p className="text-sm text-muted-foreground">فعلاً پروازی از {origin.name} ثبت نشده است.</p>
         )}
       </div>
-      <Button asChild variant="outline" className="mt-4">
-        <Link to={`/explore?from=${origin}`}>
-          همه مقصدها از {airportDistinctName(origin)}
-          <ArrowLeft aria-hidden />
-        </Link>
-      </Button>
     </section>
   );
 }
@@ -179,19 +199,22 @@ export default function Landing() {
         </ol>
       </section>
 
-      <section className="border-y bg-muted/30" aria-labelledby="why-heading">
-        <div className="container-page py-12 sm:py-16">
+      <section className="container-page" aria-labelledby="why-heading">
+        <div className="rounded-lg border bg-card px-5 py-8 sm:px-8 sm:py-10">
           <h2 id="why-heading" className="text-center text-xl font-bold sm:text-2xl">
             چرا پروازیاب؟
           </h2>
-          <div className="mt-8 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Icon beside the text on phones, above it from sm. */}
             {FEATURES.map((f) => (
-              <div key={f.title}>
-                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <div key={f.title} className="flex items-start gap-3 sm:block">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <f.icon className="size-5" aria-hidden />
                 </div>
-                <h3 className="mt-3 font-semibold">{f.title}</h3>
-                <p className="mt-1.5 text-sm leading-7 text-muted-foreground">{f.body}</p>
+                <div>
+                  <h3 className="font-semibold sm:mt-3">{f.title}</h3>
+                  <p className="mt-1 text-sm leading-7 text-muted-foreground sm:mt-1.5">{f.body}</p>
+                </div>
               </div>
             ))}
           </div>

@@ -66,6 +66,8 @@ const DAY_PART_TEXT: Record<DayPart, { label: string; hint: string }> = {
 };
 
 const SHORT_WEEKDAYS = ["ش", "ی", "د", "س", "چ", "پ", "ج"];
+/** Friday's column (the week starts on Saturday). */
+const FRIDAY = 6;
 
 function routeCodes(originCode: string, destinationCode: string): Html {
   return html`<p class="route">
@@ -131,10 +133,12 @@ function calendar(guide: RouteGuide): { table: Html; lastShown: string; trimmed:
     const j = jalaliDate(day.date);
     const label =
       i === 0 || j.day === 1 ? html`<b>${faDigits(j.day)} ${jalaliMonthName(j.month)}</b>` : faDigits(j.day);
-    const date = formatDateKeyFa(day.date, { weekday: true });
+    const date = `${i === 0 ? "امروز، " : ""}${formatDateKeyFa(day.date, { weekday: true })}`;
+    // Friday is the weekly holiday; the window starts today.
+    const marks = `${(leading + i) % 7 === FRIDAY ? " fri" : ""}${i === 0 ? " today" : ""}`;
     if (day.minPrice === null) {
       cells.push(
-        html`<span class="day none"
+        html`<span class="day none${marks}"
           ><span class="sr-only">${date}: پروازی ثبت نشده</span><span class="d" aria-hidden="true">${label}</span
           ><span class="p" aria-hidden="true">—</span></span
         >`,
@@ -143,7 +147,7 @@ function calendar(guide: RouteGuide): { table: Html; lastShown: string; trimmed:
     }
     cells.push(
       html`<a
-        class="day${day.minPrice === cheapest ? " best" : ""}"
+        class="day${day.minPrice === cheapest ? " best" : ""}${marks}"
         href="${searchPath(guide.originCode, guide.destinationCode, day.date)}"
         aria-label="${date}: از ${formatTomanFa(day.minPrice)}، ${count(day.flights)} پرواز"
         ><span class="d">${label}</span><span class="p">${thousands(day.minPrice)}</span></a
@@ -161,7 +165,7 @@ function calendar(guide: RouteGuide): { table: Html; lastShown: string; trimmed:
       <tr>
         ${SHORT_WEEKDAYS.map(
           (short, i) =>
-            html`<th scope="col">
+            html`<th scope="col" ${i === FRIDAY ? raw(` class="fri"`) : ""}>
               <span aria-hidden="true">${short}</span><span class="sr-only">${FA_WEEKDAYS[i]}</span>
             </th>`,
         )}
