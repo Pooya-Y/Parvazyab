@@ -53,6 +53,10 @@ const flightFilterShape = {
   arriveToHour: hour.optional(),
 };
 
+/** Largest page /search serves; the web client asks for ten at a time. */
+export const SEARCH_PAGE_MAX = 100;
+const instant = z.coerce.number().int().positive();
+
 export const searchQuerySchema = z
   .object({
     ...routeShape,
@@ -60,8 +64,17 @@ export const searchQuerySchema = z
     sort: z.enum(SORT_MODES).optional(),
     mode: z.enum(RANKING_MODES).optional(),
     maxPriceToman: z.coerce.number().positive().optional(),
+    offset: z.coerce.number().int().min(0).max(100_000).default(0),
+    limit: z.coerce.number().int().min(1).max(SEARCH_PAGE_MAX).default(10),
+    /** Round trips: flights leaving before this instant can't follow the chosen outbound, so they come last. */
+    departFrom: instant.optional(),
+    /** Round trips: flights landing after this instant can't precede the chosen return, so they come last. */
+    arriveBy: instant.optional(),
   })
   .superRefine(distinctRoute);
+
+/** A single flight, ranked among its day's flights when the day is given. */
+export const flightQuerySchema = z.object({ date: dateKey.optional() });
 
 export const MAX_CALENDAR_DAYS = 62;
 

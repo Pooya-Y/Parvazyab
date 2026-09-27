@@ -10,7 +10,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { PriceAlertButton } from "@/components/alerts/PriceAlertButton";
 import { RoutePriceTrend } from "@/components/charts/RoutePriceTrend";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, offerHref } from "@/lib/api";
+import { ApiError, api, offerHref } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { useApiQuery } from "@/lib/use-api-query";
 import { isKnownAirport } from "@/domain/airports";
@@ -42,12 +42,18 @@ export default function FlightDetail() {
 
   const { isAuthenticated } = useAuth();
   const saved = useSavedFlights();
-  const results = useApiQuery(validQuery ? `detail:${from}:${to}:${date ?? ""}` : null, (signal) =>
-    api.search({ originCode: from, destinationCode: to, date, sort: "departure" }, signal),
+  // The flight itself (ranked among its day's flights), and a few others that day by departure time.
+  const found = useApiQuery(validQuery ? `flight:${from}-${to}:${id}:${date ?? ""}` : null, (signal) =>
+    api.flight(from, to, id, date, signal).then((r) => r.flight),
+  );
+  const others = useApiQuery(validQuery ? `detail-others:${from}:${to}:${date ?? ""}` : null, (signal) =>
+    api.search({ originCode: from, destinationCode: to, date, sort: "departure", limit: 5 }, signal),
   );
 
-  const flight = results.data?.find((f) => f.id === id);
-  const similar = results.data?.filter((f) => f.id !== id).slice(0, 4) ?? [];
+  const flight = found.data;
+  const similar = others.data?.flights.filter((f) => f.id !== id).slice(0, 4) ?? [];
+  // A flight that's gone (departed, withdrawn) is "not found", not a failure.
+  const gone = found.error instanceof ApiError && found.error.status === 404;
   useDocumentTitle(flight ? `${flight.airline} ${flight.originCity} به ${flight.destinationCity}` : "جزئیات پرواز");
 
   const backHref = validQuery ? searchUrl({ from, to, date }) : "/";
@@ -61,7 +67,7 @@ export default function FlightDetail() {
     </Link>
   );
 
-  if (results.isLoading) {
+  if (found.isLoading) {
     return (
       <PageShell className="container-page max-w-4xl py-6">
         <div role="status" aria-label="در حال بارگذاری جزئیات پرواز">
@@ -74,7 +80,7 @@ export default function FlightDetail() {
     );
   }
 
-  if (results.error) {
+  if (found.error && !gone) {
     return (
       <PageShell className="container-page max-w-4xl py-6">
         {backLink}
@@ -83,9 +89,9 @@ export default function FlightDetail() {
           tone="error"
           icon={WifiOff}
           title="اطلاعات پرواز دریافت نشد"
-          description={errorMessage(results.error)}
+          description={errorMessage(found.error)}
           action={
-            <Button variant="outline" onClick={results.refetch}>
+            <Button variant="outline" onClick={found.refetch}>
               <RotateCcw />
               تلاش دوباره
             </Button>

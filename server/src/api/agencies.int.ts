@@ -213,10 +213,10 @@ describe("agency profiles and reviews", { skip }, () => {
     await client.put(`/api/agencies/${slug}/reviews/mine`, { rating: 5 });
     await AppDataSource.query(`UPDATE agency_profiles SET verified_at = now() WHERE account_id = $1`, [account.id]);
 
-    const res = await new TestClient(server.url).get<{ offers: Record<string, unknown>[] }[]>(
+    const res = await new TestClient(server.url).get<{ flights: { offers: Record<string, unknown>[] }[] }>(
       "/api/search?originCode=THR&destinationCode=AZD",
     );
-    const [offer] = res.body[0].offers;
+    const [offer] = res.body.flights[0].offers;
     assert.equal(offer.agencySlug, slug);
     assert.deepEqual(offer.agencyRating, { average: 5, count: 1 });
     assert.equal(offer.agencyVerified, true);

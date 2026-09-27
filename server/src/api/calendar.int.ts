@@ -29,10 +29,10 @@ describe("price calendar", { skip }, () => {
   });
 
   async function cheapestOn(date: string, extra = "") {
-    const res = await client.get<{ bestPriceToman: number }[]>(
+    const res = await client.get<{ flights: { bestPriceToman: number }[] }>(
       `/api/search?originCode=THR&destinationCode=MHD&date=${date}&sort=cheapest${extra}`,
     );
-    return res.body[0]?.bestPriceToman ?? null;
+    return res.body.flights[0]?.bestPriceToman ?? null;
   }
 
   test("each day's minimum matches the cheapest search result that day", async () => {

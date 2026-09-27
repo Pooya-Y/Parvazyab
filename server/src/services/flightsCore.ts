@@ -243,6 +243,22 @@ export type SortMode = (typeof SORT_MODES)[number];
  * Order an already-ranked set. "best" uses the score attached by `rankFlights`
  * (so the ranking mode chosen there is respected).
  */
+/**
+ * Round trips: flights that can pair with the other leg's choice first, the rest
+ * after (the page marks them unavailable), each group keeping its order.
+ * `departFrom`: earliest departure that still follows the chosen outbound;
+ * `arriveBy`: latest arrival that still precedes the chosen return.
+ */
+export function pairableFirst(
+  flights: FlightCard[],
+  { departFrom, arriveBy }: { departFrom?: number; arriveBy?: number },
+): FlightCard[] {
+  if (departFrom === undefined && arriveBy === undefined) return flights;
+  const fits = (f: FlightCard) =>
+    (departFrom === undefined || f.departAt >= departFrom) && (arriveBy === undefined || f.arriveAt <= arriveBy);
+  return [...flights.filter(fits), ...flights.filter((f) => !fits(f))];
+}
+
 export function sortFlights(flights: FlightCard[], sort: SortMode = "best"): FlightCard[] {
   const arr = [...flights];
   switch (sort) {

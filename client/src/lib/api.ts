@@ -25,6 +25,7 @@ import type {
   PriceAlertInput,
   SavedFlight,
   SearchFacets,
+  SearchPage,
   SearchParams,
   User,
 } from "./types";
@@ -105,7 +106,14 @@ async function request<T>(
 }
 
 export const api = {
-  search: (q: SearchParams, signal?: AbortSignal) => request<Flight[]>("/search", { query: { ...q }, signal }),
+  /** One page of results (ten unless `limit` says otherwise). */
+  search: (q: SearchParams, signal?: AbortSignal) => request<SearchPage>("/search", { query: { ...q }, signal }),
+  /** One flight by id, ranked among its day's flights when `date` is given. */
+  flight: (originCode: string, destinationCode: string, id: string, date?: string, signal?: AbortSignal) =>
+    request<{ flight: Flight }>(`/flights/${originCode}-${destinationCode}/${encodeURIComponent(id)}`, {
+      query: { date },
+      signal,
+    }),
   searchFacets: (q: Pick<SearchParams, "originCode" | "destinationCode" | "date">, signal?: AbortSignal) =>
     request<SearchFacets>("/search/facets", { query: { ...q }, signal }),
   /** Cheapest price per day; `params` carries the same filters as search (minus date/sort/price). */

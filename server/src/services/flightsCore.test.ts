@@ -5,6 +5,7 @@ import {
   restrictOffers,
   buildFlightIdentityKey,
   groupOffersByFlight,
+  pairableFirst,
   rankFlights,
   sortFlights,
   type Listing,
@@ -238,4 +239,21 @@ test("fare type filter keeps only charter or scheduled offers", () => {
     charter.map((c) => [c.flightNo, c.offers.map((o) => o.fareType)]),
     [["BOTH", ["charter"]]],
   );
+});
+
+test("round trips: flights that can pair with the other leg come first, each group in order", () => {
+  // Departures at 06:00, 08:00, 10:00 and 12:00, 90 minutes each; the later, the cheaper.
+  const flights = groupOffersByFlight(
+    [6, 8, 10, 12].map((h, i) =>
+      listing({ flightNo: `F-${h}`, departAt: tehran(h), priceToman: 3_000_000 - i * 100_000 }),
+    ),
+  );
+  const byPrice = sortFlights(flights, "cheapest");
+  const order = (list: typeof flights) => list.map((f) => f.flightNo);
+  assert.deepEqual(order(pairableFirst(byPrice, {})), ["F-12", "F-10", "F-8", "F-6"]);
+  // A return must leave from 09:00 on: in departure order, 06:00 and 08:00 move behind the rest.
+  const byDeparture = sortFlights(flights, "departure");
+  assert.deepEqual(order(pairableFirst(byDeparture, { departFrom: tehran(9) })), ["F-10", "F-12", "F-6", "F-8"]);
+  // An outbound must land by 11:30: 10:00 lands exactly then and fits, 12:00 doesn't.
+  assert.deepEqual(order(pairableFirst(byPrice, { arriveBy: tehran(11, 30) })), ["F-10", "F-8", "F-6", "F-12"]);
 });

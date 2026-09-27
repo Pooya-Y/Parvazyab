@@ -11,12 +11,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { airportShortCity } from "@/domain/airports";
 import { useAuth } from "@/hooks/use-auth";
 import { useSavedFlights } from "@/hooks/use-saved-flights";
-import { offerHref } from "@/lib/api";
+import { api, offerHref } from "@/lib/api";
 import { formatDateKey, formatPrice, formatTime, toFaDigits } from "@/lib/persian";
 import { activeLeg, flightDetailHref, legRoute, toSearchParams, type Leg, type SearchState } from "@/lib/search-state";
 import type { Flight } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { turnaroundConflict } from "@/lib/round-trip";
+import { MIN_TURNAROUND_MS, turnaroundConflict } from "@/lib/round-trip";
+import { useApiQuery } from "@/lib/use-api-query";
 import { FiltersAside, FiltersSheetButton, ResultsBody, SignInHint, SortSelect } from "./leg-results";
 import { resultsSummary, useLegResults } from "./use-leg-results";
 
@@ -31,6 +32,14 @@ function scrollToResults() {
       .getElementById("results-heading")
       ?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" }),
   );
+}
+
+/** A chosen flight, looked up by id: it may be on a page of results not fetched yet. */
+function useChosenFlight(route: { from: string; to: string; date?: string }, id: string | undefined) {
+  const query = useApiQuery(id ? `flight:${route.from}-${route.to}:${id}:${route.date ?? ""}` : null, (signal) =>
+    api.flight(route.from, route.to, id ?? "", route.date, signal).then((r) => r.flight),
+  );
+  return query.data;
 }
 
 function LegTabs({
@@ -207,17 +216,32 @@ export function RoundTripResults({ state, update }: { state: SearchState & { ret
   const saved = useSavedFlights();
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const leg = activeLeg(state);
-  const outboundData = useLegResults(state, "out");
-  const returnData = useLegResults(state, "ret");
-  const data = leg === "out" ? outboundData : returnData;
 
-  // Selections come from the (filtered) leg lists; a selection filtered away reads as "not chosen".
-  const outbound = outboundData.results.data?.find((f) => f.id === state.outboundId);
-  const inbound = returnData.results.data?.find((f) => f.id === state.returnId);
+  // Choices are kept by id in the URL; the flight just picked is used at once, and
+  // one from a shared link is looked up.
+  const [picked, setPicked] = useState<Record<string, Flight>>({});
+  const outboundLookup = useChosenFlight(legRoute(state, "out"), state.outboundId);
+  const inboundLookup = useChosenFlight(legRoute(state, "ret"), state.returnId);
+  const outbound = state.outboundId ? (picked[state.outboundId] ?? outboundLookup) : undefined;
+  const inbound = state.returnId ? (picked[state.returnId] ?? inboundLookup) : undefined;
   const selections = { out: outbound, ret: inbound };
+
+  // Each leg's pages put the flights that can't pair with the other leg's choice last.
+  const outboundData = useLegResults(
+    state,
+    "out",
+    inbound ? { arriveBy: inbound.departAt - MIN_TURNAROUND_MS } : undefined,
+  );
+  const returnData = useLegResults(
+    state,
+    "ret",
+    outbound ? { departFrom: outbound.arriveAt + MIN_TURNAROUND_MS } : undefined,
+  );
+  const data = leg === "out" ? outboundData : returnData;
   const other = leg === "out" ? inbound : outbound;
 
   const choose = (flight: Flight) => {
+    setPicked((p) => ({ ...p, [flight.id]: flight }));
     if (leg === "out") {
       const patch: Partial<SearchState> = { outboundId: flight.id, leg: "ret" };
       if (inbound && turnaroundConflict("out", flight, inbound)) {
@@ -309,10 +333,6 @@ export function RoundTripResults({ state, update }: { state: SearchState & { ret
             data={data}
             onChange={update}
             noFlights={noFlights}
-            arrange={(list) => [
-              ...list.filter((f) => !turnaroundConflict(leg, f, other)),
-              ...list.filter((f) => turnaroundConflict(leg, f, other)),
-            ]}
             renderCard={(f) => (
               <FlightCard
                 flight={f}
@@ -331,7 +351,7 @@ export function RoundTripResults({ state, update }: { state: SearchState & { ret
           />
         </div>
 
-        {!isAuthenticated && (data.results.data?.length ?? 0) > 0 ? (
+        {!isAuthenticated && (data.results.total ?? 0) > 0 ? (
           <SignInHint returnTo={`/search?${toSearchParams(state)}`} />
         ) : null}
       </section>
