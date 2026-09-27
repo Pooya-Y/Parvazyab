@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Brand } from "@/components/layout/Header";
+import { Header } from "@/components/layout/Header";
 
-/** Frame of the standalone auth pages: brand bar and one centred panel. */
+/** Frame of the standalone auth pages: the site header and one centred panel. */
 export function AuthShell({
   title,
   description,
@@ -13,13 +13,13 @@ export function AuthShell({
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-dotted">
-      <header className="border-b bg-background/90 backdrop-blur">
-        <div className="container-page flex h-14 items-center sm:h-16">
-          <Brand />
-        </div>
-      </header>
+      <Header />
 
-      <main id="main" className="flex flex-1 items-start justify-center px-4 py-8 sm:items-center sm:py-12">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="flex flex-1 items-start justify-center px-4 py-8 outline-none sm:items-center sm:py-12"
+      >
         <div className="w-full max-w-md rounded-lg border bg-card shadow-sm">
           <div className="border-b px-6 py-5 text-center">
             <h1 className="text-xl font-bold">{title}</h1>

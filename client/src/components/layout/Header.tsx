@@ -96,6 +96,8 @@ export function Header() {
     location.pathname === "/" || location.pathname === "/auth"
       ? "/auth"
       : `/auth?returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
+  // The sign-in pages are where that button leads.
+  const onAuthPage = location.pathname.startsWith("/auth");
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
@@ -133,7 +135,7 @@ export function Header() {
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted" aria-hidden />
           ) : isAuthenticated ? (
             <AccountMenu />
-          ) : (
+          ) : onAuthPage ? null : (
             <Button asChild>
               <Link to={authHref}>
                 <LogIn aria-hidden />
