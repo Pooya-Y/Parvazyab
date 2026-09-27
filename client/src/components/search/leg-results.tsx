@@ -31,7 +31,11 @@ type FilterChange = (patch: Partial<SearchState>) => void;
 
 export function FiltersAside({ data, onChange }: { data: LegResults; onChange: FilterChange }) {
   return (
-    <aside className="hidden rounded-lg border bg-card p-4 lg:sticky lg:top-20 lg:block" aria-label="فیلتر نتایج">
+    // Sticky, so it scrolls on its own when taller than the window (below the 5rem header offset).
+    <aside
+      className="hidden rounded-lg border bg-card p-4 [scrollbar-width:thin] lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-contain"
+      aria-label="فیلتر نتایج"
+    >
       <SearchFilters
         facets={data.facets.data}
         filters={data.filters}
