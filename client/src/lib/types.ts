@@ -212,6 +212,8 @@ export interface ExploreDestination {
   code: string;
   city: string;
   isInternational: boolean;
+  /** Where the cheapest fare leaves from (one of the requested origins). */
+  originCode: string;
   minPrice: number;
   cheapestDate: string;
   flights: number;
@@ -220,6 +222,7 @@ export interface ExploreDestination {
 
 export interface ExploreResult {
   originCode: string;
+  originCodes: string[];
   days: number;
   scope: ExploreScope;
   destinations: ExploreDestination[];

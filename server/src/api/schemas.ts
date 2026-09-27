@@ -78,7 +78,11 @@ export const calendarQuerySchema = z
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
 
 export const exploreQuerySchema = z.object({
-  originCode: airportCode,
+  /** One airport, or several comma-separated: "THR,IKA" is every airport of Tehran. */
+  originCode: z
+    .string()
+    .transform((value) => [...new Set(value.split(",").map((code) => code.trim().toUpperCase()))])
+    .pipe(z.array(airportCode).min(1).max(4)),
   days: z.coerce.number().int().min(1).max(60).default(30),
   scope: z.enum(EXPLORE_SCOPES).default("all"),
 });

@@ -115,6 +115,7 @@ export const api = {
   ) => request<PriceCalendar>("/search/calendar", { query: { ...params }, signal }),
   priceHistory: (originCode: string, destinationCode: string, days: number, signal?: AbortSignal) =>
     request<PriceHistory>(`/routes/${originCode}-${destinationCode}/price-history`, { query: { days }, signal }),
+  /** `originCode` may list several airports, comma-separated ("THR,IKA" for all of Tehran). */
   explore: (originCode: string, days: number, scope: ExploreScope, signal?: AbortSignal) =>
     request<ExploreResult>("/explore", { query: { originCode, days, scope }, signal }),
   popularRoutes: (signal?: AbortSignal) => request<PopularRoute[]>("/routes/popular", { signal }),
